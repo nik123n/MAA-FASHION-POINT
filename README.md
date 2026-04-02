@@ -330,4 +330,5 @@ user, items[{product, quantity, size, color, price}], couponApplied
 
 ---
 
-Made with ❤️ for Saanjh Boutique
+Made with ❤️ for MAA FASHTION POINT
+
