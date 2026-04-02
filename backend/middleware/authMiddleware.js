@@ -1,39 +1,96 @@
-const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
-const User = require('../models/User');
+const admin = require('../config/firebaseAdmin');
+const { getFirestore } = require('firebase-admin/firestore');
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@saanjhboutique.com').trim().toLowerCase();
 
-// Generate JWT
-const generateToken = (userId, role) => {
-  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
-  });
-};
-
-// Protect routes — must be logged in
+// ─────────────────────────────────────────────────────────────────────────────
+// protect — verify Firebase ID Token and load user profile from Firestore
+// ─────────────────────────────────────────────────────────────────────────────
 const protect = asyncHandler(async (req, res, next) => {
-  let token;
+  let idToken;
+
   if (req.headers.authorization?.startsWith('Bearer ')) {
-    token = req.headers.authorization.split(' ')[1];
+    idToken = req.headers.authorization.split(' ')[1];
   }
-  if (!token) {
+
+  if (!idToken) {
     res.status(401);
-    throw new Error('Not authorized — no token');
+    throw new Error('Not authorized — no token provided');
   }
+
+  if (!admin) {
+    res.status(503);
+    throw new Error('Auth service unavailable — Firebase Admin not configured');
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select('-password');
-    if (!req.user || !req.user.isActive) {
-      res.status(401);
-      throw new Error('Account not found or deactivated');
+    // Verify the Firebase ID token (checks signature, expiry, audience)
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    // Load user profile from Firestore
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(decoded.uid);
+    const userDoc = await userRef.get();
+    const isConfiguredAdmin = (decoded.email || '').toLowerCase() === ADMIN_EMAIL || decoded.admin === true;
+
+    if (!userDoc.exists && isConfiguredAdmin) {
+      await userRef.set({
+        name: decoded.name || 'MAA Admin',
+        email: decoded.email,
+        phone: '',
+        role: 'admin',
+        avatar: '',
+        addresses: [],
+        preferences: { sizes: [], categories: [] },
+        wishlist: [],
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     }
+
+    const refreshedUserDoc = await userRef.get();
+
+    if (!refreshedUserDoc.exists) {
+      res.status(401);
+      throw new Error('User profile not found');
+    }
+
+    const userData = refreshedUserDoc.data();
+
+    if (isConfiguredAdmin && userData.role !== 'admin') {
+      await userRef.set({ role: 'admin', updatedAt: new Date().toISOString() }, { merge: true });
+      userData.role = 'admin';
+    }
+
+    if (userData.isActive === false) {
+      res.status(401);
+      throw new Error('Account has been deactivated');
+    }
+
+    // Attach user info to request (compatible with old req.user shape)
+    req.user = {
+      _id:   decoded.uid,   // kept as _id for backward compat with existing controllers
+      uid:   decoded.uid,
+      email: decoded.email,
+      name:  userData.name,
+      role:  userData.role || 'user',
+      ...userData,
+    };
+
     next();
   } catch (err) {
-    res.status(401);
-    throw new Error('Not authorized — invalid token');
+    // Firebase token errors: expired, revoked, malformed
+    if (err.code?.startsWith('auth/')) {
+      res.status(401);
+      throw new Error('Not authorized — invalid or expired token');
+    }
+    throw err; // re-throw non-auth errors for the global error handler
   }
 });
 
-// Admin-only guard
+// ─────────────────────────────────────────────────────────────────────────────
+// adminOnly — must come AFTER protect
+// ─────────────────────────────────────────────────────────────────────────────
 const adminOnly = (req, res, next) => {
   if (req.user?.role !== 'admin') {
     res.status(403);
@@ -42,19 +99,64 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-// Optional auth (doesn't fail if no token)
+// ─────────────────────────────────────────────────────────────────────────────
+// optionalAuth — doesn't fail if token is absent, just skips user lookup
+// ─────────────────────────────────────────────────────────────────────────────
 const optionalAuth = asyncHandler(async (req, res, next) => {
-  let token;
+  let idToken;
+
   if (req.headers.authorization?.startsWith('Bearer ')) {
-    token = req.headers.authorization.split(' ')[1];
+    idToken = req.headers.authorization.split(' ')[1];
   }
-  if (token) {
+
+  if (idToken && admin) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-    } catch (_) {}
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const db = getFirestore();
+      const userRef = db.collection('users').doc(decoded.uid);
+      const userDoc = await userRef.get();
+      const isConfiguredAdmin = (decoded.email || '').toLowerCase() === ADMIN_EMAIL || decoded.admin === true;
+
+      if (!userDoc.exists && isConfiguredAdmin) {
+        await userRef.set({
+          name: decoded.name || 'MAA Admin',
+          email: decoded.email,
+          phone: '',
+          role: 'admin',
+          avatar: '',
+          addresses: [],
+          preferences: { sizes: [], categories: [] },
+          wishlist: [],
+          isActive: true,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+
+      const refreshedUserDoc = await userRef.get();
+      if (refreshedUserDoc.exists) {
+        const userData = refreshedUserDoc.data();
+        if (isConfiguredAdmin && userData.role !== 'admin') {
+          await userRef.set({ role: 'admin', updatedAt: new Date().toISOString() }, { merge: true });
+          userData.role = 'admin';
+        }
+        req.user = {
+          _id: decoded.uid,
+          uid: decoded.uid,
+          email: decoded.email,
+          ...userData,
+        };
+      }
+    } catch (_) {
+      // Silently skip — optional auth, not required
+    }
   }
+
   next();
 });
 
-module.exports = { generateToken, protect, adminOnly, optionalAuth };
+// generateToken kept as a no-op export for backward compat (unused now)
+const generateToken = () => {
+  throw new Error('generateToken is deprecated — Firebase handles tokens now');
+};
+
+module.exports = { protect, adminOnly, optionalAuth, generateToken };

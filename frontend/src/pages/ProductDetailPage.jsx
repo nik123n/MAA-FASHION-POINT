@@ -56,17 +56,21 @@ export default function ProductDetailPage() {
   const selectedSizeObj = product.sizes?.find((s) => s.size === selectedSize);
   const maxQty = selectedSizeObj?.stock || 0;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!token) { toast.error('Please login to add to cart'); navigate('/auth/login'); return; }
     if (!selectedSize) { toast.error('Please select a size'); return; }
-    dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize }));
+    try {
+      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize })).unwrap();
+    } catch (_) {}
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!token) { navigate('/auth/login'); return; }
     if (!selectedSize) { toast.error('Please select a size'); return; }
-    dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize }));
-    navigate('/cart');
+    try {
+      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize })).unwrap();
+      navigate('/cart');
+    } catch (_) {}
   };
 
   return (

@@ -361,8 +361,8 @@ export default function AdminProducts() {
                   {uploadEnabled && uploadStatusLoaded && (
                     <div className="mb-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                       {uploadMode === 'local'
-                        ? 'Image upload is enabled. Uploaded files will be stored locally and their image URLs will be saved in MongoDB.'
-                        : 'Image upload is enabled with Cloudinary and saved image URLs will be stored in MongoDB.'}
+                        ? 'Image upload is enabled. Uploaded files will be stored locally and their image URLs will be saved in Firestore.'
+                        : 'Image upload is enabled with Cloudinary and saved image URLs will be saved in Firestore.'}
                     </div>
                   )}
                   <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 transition-colors ${

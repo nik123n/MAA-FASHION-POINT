@@ -1,103 +1,229 @@
 const asyncHandler = require('express-async-handler');
-const { Cart } = require('../models/CartOrder');
-const Product = require('../models/Product');
+const { randomUUID } = require('crypto');
+const admin = require('../config/firebaseAdmin');
+const { getFirestore } = require('firebase-admin/firestore');
 
-// @desc  Get user cart
-// @route GET /api/cart
-const getCart = asyncHandler(async (req, res) => {
-  let cart = await Cart.findOne({ user: req.user._id }).populate(
-    'items.product',
-    'name images price discountedPrice totalStock sizes'
-  );
-  if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
-  res.json({ success: true, cart });
+const getDb = () => {
+  if (!admin) {
+    const err = new Error('Firestore is not configured on the backend');
+    err.statusCode = 503;
+    throw err;
+  }
+  return getFirestore();
+};
+
+const nowIso = () => new Date().toISOString();
+
+const normalizeProduct = (id, product = {}) => ({
+  _id: id,
+  name: product.name || '',
+  images: Array.isArray(product.images) ? product.images : [],
+  price: Number(product.price || 0),
+  discountedPrice: product.discountedPrice === null || product.discountedPrice === undefined || product.discountedPrice === ''
+    ? null
+    : Number(product.discountedPrice || 0),
+  totalStock: Number(product.totalStock || 0),
+  sizes: Array.isArray(product.sizes)
+    ? product.sizes.map((size) => ({
+        size: size?.size || 'Free Size',
+        stock: Number(size?.stock || 0),
+      }))
+    : [],
+  category: product.category || '',
+  rating: Number(product.rating || 0),
+  brand: product.brand || '',
 });
 
-// @desc  Add item to cart
-// @route POST /api/cart
-const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity = 1, size, color } = req.body;
+const loadProduct = async (productId) => {
+  const db = getDb();
+  const snapshot = await db.collection('products').doc(productId).get();
+  if (!snapshot.exists) return null;
+  return normalizeProduct(snapshot.id, snapshot.data());
+};
 
-  const product = await Product.findById(productId);
+const loadCartDoc = async (userId) => {
+  const db = getDb();
+  const ref = db.collection('carts').doc(userId);
+  const snapshot = await ref.get();
+
+  if (!snapshot.exists) {
+    return {
+      ref,
+      cart: {
+        _id: userId,
+        user: userId,
+        items: [],
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      },
+    };
+  }
+
+  const data = snapshot.data() || {};
+  return {
+    ref,
+    cart: {
+      _id: snapshot.id,
+      user: data.user || userId,
+      items: Array.isArray(data.items) ? data.items : [],
+      createdAt: data.createdAt || nowIso(),
+      updatedAt: data.updatedAt || nowIso(),
+    },
+  };
+};
+
+const hydrateCart = async (cart) => {
+  const items = await Promise.all(
+    (cart.items || []).map(async (item) => {
+      const product = await loadProduct(item.productId);
+      return {
+        _id: item._id,
+        productId: item.productId,
+        product,
+        quantity: Number(item.quantity || 0),
+        size: item.size || '',
+        color: item.color || '',
+        price: Number(item.price || 0),
+      };
+    })
+  );
+
+  return {
+    _id: cart._id,
+    user: cart.user,
+    items: items.filter((item) => item.product),
+    createdAt: cart.createdAt,
+    updatedAt: cart.updatedAt,
+  };
+};
+
+const saveCart = async (ref, cart) => {
+  await ref.set({
+    user: cart.user,
+    items: cart.items,
+    createdAt: cart.createdAt,
+    updatedAt: cart.updatedAt,
+  });
+};
+
+const getCart = asyncHandler(async (req, res) => {
+  const { ref, cart } = await loadCartDoc(req.user._id);
+  if (!cart.createdAt) cart.createdAt = nowIso();
+  cart.updatedAt = cart.updatedAt || nowIso();
+  await saveCart(ref, cart);
+  const hydratedCart = await hydrateCart(cart);
+  res.json({ success: true, cart: hydratedCart });
+});
+
+const addToCart = asyncHandler(async (req, res) => {
+  const { productId, quantity = 1, size, color = '' } = req.body;
+
+  if (!productId) {
+    res.status(400);
+    throw new Error('Product id is required');
+  }
+
+  const product = await loadProduct(productId);
   if (!product) {
     res.status(404);
     throw new Error('Product not found');
   }
 
-  // Check stock for selected size
-  const sizeObj = product.sizes.find((s) => s.size === size);
-  if (!sizeObj || sizeObj.stock < quantity) {
+  const requestedQty = Math.max(1, Number(quantity || 1));
+  const sizeObj = (product.sizes || []).find((entry) => entry.size === size);
+  if (!sizeObj || sizeObj.stock < requestedQty) {
     res.status(400);
     throw new Error('Selected size is out of stock');
   }
 
-  let cart = await Cart.findOne({ user: req.user._id });
-  if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
-
-  const existingIdx = cart.items.findIndex(
-    (item) => item.product.toString() === productId && item.size === size
+  const { ref, cart } = await loadCartDoc(req.user._id);
+  const existingIdx = (cart.items || []).findIndex(
+    (item) => item.productId === productId && item.size === size && (item.color || '') === color
   );
 
   const price = product.discountedPrice || product.price;
 
   if (existingIdx > -1) {
-    cart.items[existingIdx].quantity += quantity;
+    const nextQty = Number(cart.items[existingIdx].quantity || 0) + requestedQty;
+    if (nextQty > sizeObj.stock) {
+      res.status(400);
+      throw new Error('Selected size is out of stock');
+    }
+    cart.items[existingIdx].quantity = nextQty;
     cart.items[existingIdx].price = price;
   } else {
-    cart.items.push({ product: productId, quantity, size, color, price });
+    cart.items.push({
+      _id: randomUUID(),
+      productId,
+      quantity: requestedQty,
+      size,
+      color,
+      price,
+    });
   }
 
-  await cart.save();
-  cart = await cart.populate('items.product', 'name images price discountedPrice totalStock sizes');
-  res.json({ success: true, cart });
+  cart.updatedAt = nowIso();
+  await saveCart(ref, cart);
+  const hydratedCart = await hydrateCart(cart);
+  res.json({ success: true, cart: hydratedCart });
 });
 
-// @desc  Update cart item quantity
-// @route PUT /api/cart/:itemId
 const updateCartItem = asyncHandler(async (req, res) => {
   const { quantity } = req.body;
-  const cart = await Cart.findOne({ user: req.user._id });
-  if (!cart) {
-    res.status(404);
-    throw new Error('Cart not found');
-  }
+  const nextQty = Number(quantity || 0);
 
-  const item = cart.items.id(req.params.itemId);
+  const { ref, cart } = await loadCartDoc(req.user._id);
+  const item = (cart.items || []).find((entry) => entry._id === req.params.itemId);
   if (!item) {
     res.status(404);
     throw new Error('Cart item not found');
   }
 
-  if (quantity <= 0) {
-    item.deleteOne();
+  if (nextQty <= 0) {
+    cart.items = cart.items.filter((entry) => entry._id !== req.params.itemId);
   } else {
-    item.quantity = quantity;
+    const product = await loadProduct(item.productId);
+    if (!product) {
+      res.status(404);
+      throw new Error('Product not found');
+    }
+    const sizeObj = (product.sizes || []).find((entry) => entry.size === item.size);
+    if (!sizeObj || sizeObj.stock < nextQty) {
+      res.status(400);
+      throw new Error('Selected size is out of stock');
+    }
+    item.quantity = nextQty;
+    item.price = product.discountedPrice || product.price;
   }
 
-  await cart.save();
-  await cart.populate('items.product', 'name images price discountedPrice totalStock sizes');
-  res.json({ success: true, cart });
+  cart.updatedAt = nowIso();
+  await saveCart(ref, cart);
+  const hydratedCart = await hydrateCart(cart);
+  res.json({ success: true, cart: hydratedCart });
 });
 
-// @desc  Remove item from cart
-// @route DELETE /api/cart/:itemId
 const removeFromCart = asyncHandler(async (req, res) => {
-  const cart = await Cart.findOne({ user: req.user._id });
-  if (!cart) {
+  const { ref, cart } = await loadCartDoc(req.user._id);
+  const nextItems = (cart.items || []).filter((entry) => entry._id !== req.params.itemId);
+
+  if (nextItems.length === cart.items.length) {
     res.status(404);
-    throw new Error('Cart not found');
+    throw new Error('Cart item not found');
   }
-  cart.items = cart.items.filter((i) => i._id.toString() !== req.params.itemId);
-  await cart.save();
-  await cart.populate('items.product', 'name images price discountedPrice totalStock sizes');
-  res.json({ success: true, cart });
+
+  cart.items = nextItems;
+  cart.updatedAt = nowIso();
+  await saveCart(ref, cart);
+  const hydratedCart = await hydrateCart(cart);
+  res.json({ success: true, cart: hydratedCart });
 });
 
-// @desc  Clear cart
-// @route DELETE /api/cart
 const clearCart = asyncHandler(async (req, res) => {
-  await Cart.findOneAndUpdate({ user: req.user._id }, { items: [], couponApplied: undefined });
-  res.json({ success: true, message: 'Cart cleared' });
+  const { ref, cart } = await loadCartDoc(req.user._id);
+  cart.items = [];
+  cart.updatedAt = nowIso();
+  await saveCart(ref, cart);
+  res.json({ success: true, message: 'Cart cleared', cart: { ...cart, items: [] } });
 });
 
 module.exports = { getCart, addToCart, updateCartItem, removeFromCart, clearCart };

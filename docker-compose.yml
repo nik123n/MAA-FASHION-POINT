@@ -1,21 +1,6 @@
 version: '3.9'
 
 services:
-  # ── MongoDB ────────────────────────────────────────────────
-  mongodb:
-    image: mongo:7
-    container_name: saanjh_mongodb
-    restart: unless-stopped
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: saanjh_boutique
-    networks:
-      - saanjh_net
-
-  # ── Backend API ────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -27,7 +12,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGO_URI=mongodb://mongodb:27017/saanjh_boutique
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=${JWT_EXPIRE:-30d}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
@@ -41,15 +25,13 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - EMAIL_FROM=${EMAIL_FROM}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
-    depends_on:
-      - mongodb
+      - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
     networks:
       - saanjh_net
     volumes:
       - ./backend:/app
       - /app/node_modules
 
-  # ── Frontend ───────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -62,9 +44,6 @@ services:
       - backend
     networks:
       - saanjh_net
-
-volumes:
-  mongodb_data:
 
 networks:
   saanjh_net:

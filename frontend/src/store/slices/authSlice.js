@@ -1,94 +1,46 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../utils/api';
-import toast from 'react-hot-toast';
+import { createSlice } from '@reduxjs/toolkit';
 
-// Thunks
-export const registerUser = createAsyncThunk('auth/register', async (data, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/auth/register', data);
-    localStorage.setItem('token', res.data.token);
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || 'Registration failed');
-  }
-});
-
-export const loginUser = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/auth/login', data);
-    localStorage.setItem('token', res.data.token);
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || 'Login failed');
-  }
-});
-
-export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }) => {
-  try {
-    const res = await api.get('/auth/me');
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message);
-  }
-});
-
-export const updateProfile = createAsyncThunk('auth/updateProfile', async (data, { rejectWithValue }) => {
-  try {
-    const res = await api.put('/auth/profile', data);
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message);
-  }
-});
-
-const token = localStorage.getItem('token');
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth slice — lightweight Redux slice that mirrors the Firebase auth state.
+// The AuthContext (Firebase) is the source of truth; this slice is kept so
+// existing components using `useSelector((s) => s.auth)` continue to work
+// without any changes.
+// ─────────────────────────────────────────────────────────────────────────────
 const authSlice = createSlice({
   name: 'auth',
-  initialState: { user: null, token: token || null, loading: false, error: null, initialized: false },
-  reducers: {
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      localStorage.removeItem('token');
-      toast.success('Logged out successfully');
-    },
-    clearError: (state) => { state.error = null; },
+  initialState: {
+    user:        null,
+    token:       null,   // holds Firebase UID (truthy = logged in)
+    loading:     false,
+    error:       null,
+    initialized: false,  // true once onAuthStateChanged fires for the first time
   },
-  extraReducers: (builder) => {
-    // Register
-    builder.addCase(registerUser.pending, (s) => { s.loading = true; s.error = null; });
-    builder.addCase(registerUser.fulfilled, (s, a) => {
-      s.loading = false; s.user = a.payload.user; s.token = a.payload.token;
-      toast.success('Welcome to Saanjh Boutique! 🎉');
-    });
-    builder.addCase(registerUser.rejected, (s, a) => {
-      s.loading = false; s.error = a.payload; toast.error(a.payload);
-    });
-    // Login
-    builder.addCase(loginUser.pending, (s) => { s.loading = true; s.error = null; });
-    builder.addCase(loginUser.fulfilled, (s, a) => {
-      s.loading = false; s.user = a.payload.user; s.token = a.payload.token;
-      toast.success(`Welcome back, ${a.payload.user.name}! 💕`);
-    });
-    builder.addCase(loginUser.rejected, (s, a) => {
-      s.loading = false; s.error = a.payload; toast.error(a.payload);
-    });
-    // Fetch me
-    builder.addCase(fetchMe.pending, (s) => { s.loading = true; });
-    builder.addCase(fetchMe.fulfilled, (s, a) => {
-      s.loading = false; s.user = a.payload.user; s.initialized = true;
-    });
-    builder.addCase(fetchMe.rejected, (s) => {
-      s.loading = false; s.initialized = true; s.token = null;
-      localStorage.removeItem('token');
-    });
-    // Update profile
-    builder.addCase(updateProfile.fulfilled, (s, a) => {
-      s.user = a.payload.user; toast.success('Profile updated!');
-    });
+  reducers: {
+    // Called by AuthContext after Firebase + Firestore data is ready
+    setUser: (state, action) => {
+      state.user        = action.payload;
+      state.token       = action.payload?.uid ?? null; // uid acts as the "token" flag
+      state.initialized = true;
+      state.loading     = false;
+    },
+    // Called by AuthContext after Firebase signOut
+    clearUser: (state) => {
+      state.user        = null;
+      state.token       = null;
+      state.initialized = true;
+      state.loading     = false;
+    },
+    // Legacy alias kept so any remaining `dispatch(logout())` calls still work
+    logout: (state) => {
+      state.user        = null;
+      state.token       = null;
+      state.initialized = true;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { setUser, clearUser, logout, setLoading } = authSlice.actions;
 export default authSlice.reducer;

@@ -6,18 +6,20 @@ import {
   FiSearch, FiShoppingBag, FiHeart, FiUser, FiMenu, FiX,
   FiChevronDown, FiLogOut, FiPackage, FiSettings,
 } from 'react-icons/fi';
-import { logout } from '../../store/slices/authSlice';
+import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import BrandLogo from './BrandLogoNew';
 
 const CATEGORIES = ['3 Piece', '3 Piece Pair', 'Short Top', '2 Piece', 'Tunic Top', 'Cotton Tunic Top', 'Long Top', 'Cord Set', 'Plazo Pair', 'Kurti Plaza Dupata', 'Kurti Pent Dupata', 'Cotton Straight Pent'];
 
 export default function BrandedNavbar() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const dispatch   = useDispatch();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const { user: authUser, signOut: firebaseSignOut } = useAuth();
+  // Keep reading from Redux for cart/wishlist counters (unchanged slices)
   const { user, token } = useSelector((s) => s.auth);
-  const { cart } = useSelector((s) => s.cart);
+  const { cart }        = useSelector((s) => s.cart);
   const { items: wishlist } = useSelector((s) => s.wishlist);
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -68,9 +70,9 @@ export default function BrandedNavbar() {
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
     setUserMenuOpen(false);
+    await firebaseSignOut(); // signs out of Firebase → clears Redux via AuthContext
     navigate('/');
   };
 

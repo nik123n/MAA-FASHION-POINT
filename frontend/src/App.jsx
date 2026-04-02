@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchMe } from './store/slices/authSlice';
+import { useDispatch } from 'react-redux';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { fetchCart } from './store/slices/allSlices';
 
 // Layout
@@ -31,26 +31,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCoupons from './pages/admin/AdminCoupons';
 
-// Guards
-const ProtectedRoute = ({ children }) => {
-  const { token, initialized } = useSelector((s) => s.auth);
-  if (!initialized) return <PageLoader />;
-  return token ? children : <Navigate to="/auth/login" replace />;
-};
-
-const AdminRoute = ({ children }) => {
-  const { user, token, initialized } = useSelector((s) => s.auth);
-  if (!initialized) return <PageLoader />;
-  if (!token) return <Navigate to="/auth/login" replace />;
-  if (user?.role !== 'admin') return <Navigate to="/" replace />;
-  return children;
-};
-
-const GuestRoute = ({ children }) => {
-  const { token } = useSelector((s) => s.auth);
-  return token ? <Navigate to="/" replace /> : children;
-};
-
+// ── Full-screen loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-brand-50">
     <div className="text-center">
@@ -60,43 +41,62 @@ const PageLoader = () => (
   </div>
 );
 
-export default function App() {
-  const dispatch = useDispatch();
-  const { token } = useSelector((s) => s.auth);
+// ── Route Guards (now use AuthContext — works with Firebase session) ──────────
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  return user ? children : <Navigate to="/auth/login" replace />;
+};
 
-  useEffect(() => {
-    if (token) {
-      dispatch(fetchMe());
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/auth/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+};
+
+const GuestRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  return user ? <Navigate to="/" replace /> : children;
+};
+
+// ── Inner app — has access to AuthContext ─────────────────────────────────────
+function AppInner() {
+  const dispatch = useDispatch();
+  const { user } = useAuth();
+
+  // Fetch cart whenever the logged-in user changes
+  React.useEffect(() => {
+    if (user) {
       dispatch(fetchCart());
-    } else {
-      // Mark initialized even without token
-      dispatch({ type: 'auth/me/rejected' });
     }
-  }, [token, dispatch]);
+  }, [user?.uid, dispatch]);
 
   return (
     <>
       <ScrollToTop />
       <Routes>
-        {/* Admin Routes */}
+        {/* ── Admin Routes ─────────────────────────────────── */}
         <Route
           path="/admin/*"
           element={
             <AdminRoute>
               <AdminLayout>
                 <Routes>
-                  <Route path="/" element={<AdminDashboard />} />
+                  <Route path="/"        element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="coupons" element={<AdminCoupons />} />
+                  <Route path="orders"   element={<AdminOrders />} />
+                  <Route path="users"    element={<AdminUsers />} />
+                  <Route path="coupons"  element={<AdminCoupons />} />
                 </Routes>
               </AdminLayout>
             </AdminRoute>
           }
         />
 
-        {/* Public Routes with Navbar */}
+        {/* ── Public Routes with Navbar ────────────────────── */}
         <Route
           path="/*"
           element={
@@ -104,22 +104,22 @@ export default function App() {
               <Navbar />
               <main className="min-h-screen">
                 <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/products" element={<ProductsPage />} />
-                  <Route path="/products/:id" element={<ProductDetailPage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/wishlist" element={<WishlistPage />} />
+                  <Route path="/"                 element={<HomePage />} />
+                  <Route path="/products"         element={<ProductsPage />} />
+                  <Route path="/products/:id"     element={<ProductDetailPage />} />
+                  <Route path="/cart"             element={<CartPage />} />
+                  <Route path="/wishlist"         element={<WishlistPage />} />
 
-                  {/* Auth */}
-                  <Route path="/auth/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+                  {/* Auth (guests only) */}
+                  <Route path="/auth/login"    element={<GuestRoute><LoginPage /></GuestRoute>} />
                   <Route path="/auth/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
                   {/* Protected */}
-                  <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                  <Route path="/order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
-                  <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-                  <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/checkout"           element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                  <Route path="/order-success/:id"  element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
+                  <Route path="/orders"             element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                  <Route path="/orders/:id"         element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+                  <Route path="/profile"            element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
@@ -130,5 +130,14 @@ export default function App() {
         />
       </Routes>
     </>
+  );
+}
+
+// ── Root — AuthProvider must wrap everything that uses useAuth() ─────────────
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
