@@ -1,0 +1,62 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50: '#eef2ff',
+          100: '#dde5ff',
+          200: '#c0cdfd',
+          300: '#93a8f7',
+          400: '#6780ee',
+          500: '#4961dd',
+          600: '#394cc4',
+          700: '#34308f',
+          800: '#2b286f',
+          900: '#1f2457',
+        },
+        leaf: {
+          50: '#f6fce8',
+          100: '#ecf7c9',
+          200: '#d9ef98',
+          300: '#bfe45c',
+          400: '#a4d737',
+          500: '#86c82d',
+          600: '#67bb2e',
+          700: '#4d9526',
+          800: '#3c7521',
+          900: '#315f1e',
+        },
+        coral: {
+          50: '#fff1ef',
+          100: '#ffe0db',
+          200: '#ffc4ba',
+          300: '#ff9b89',
+          400: '#ff7258',
+          500: '#f24f2f',
+          600: '#e1261c',
+          700: '#bc1b16',
+          800: '#9b1a17',
+          900: '#801b18',
+        },
+      },
+      fontFamily: {
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
+        body: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        accent: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-out',
+        'slide-up': 'slideUp 0.4s ease-out',
+        'shimmer': 'shimmer 1.5s infinite',
+      },
+      keyframes: {
+        fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+        slideUp: { from: { opacity: 0, transform: 'translateY(20px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+      },
+    },
+  },
+  plugins: [],
+};

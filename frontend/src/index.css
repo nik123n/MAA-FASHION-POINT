@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-primary: #34308f;
+    --brand-light: #eef2ff;
+    --brand-dark: #1f2457;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply font-body text-gray-800 bg-[#f8f8f4] antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(103, 187, 46, 0.16), transparent 28%),
+      radial-gradient(circle at top right, rgba(52, 48, 143, 0.12), transparent 30%);
+  }
+
+  h1, h2, h3 { @apply font-display; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-700 hover:bg-brand-800 text-white px-6 py-3 rounded-full font-medium transition-all duration-200 hover:shadow-[0_14px_35px_rgba(52,48,143,0.28)] hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-outline {
+    @apply border-2 border-brand-700 text-brand-700 hover:bg-brand-700 hover:text-white px-6 py-3 rounded-full font-medium transition-all duration-200 bg-white/80 backdrop-blur-sm;
+  }
+
+  .btn-ghost {
+    @apply text-brand-700 hover:bg-brand-50 px-4 py-2 rounded-lg transition-colors;
+  }
+
+  .card {
+    @apply bg-white rounded-[1.5rem] shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)] transition-shadow duration-300;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent transition-all duration-200 bg-white;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .skeleton {
+    @apply bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 bg-[length:200%_100%] animate-shimmer rounded;
+  }
+
+  .product-card-img {
+    @apply w-full h-72 object-cover object-top transition-transform duration-500 group-hover:scale-105;
+  }
+}
+
+@layer utilities {
+  .text-brand { color: var(--brand-primary); }
+  .bg-brand-subtle { background: var(--brand-light); }
+
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Swiper custom styles */
+.swiper-pagination-bullet-active {
+  background: var(--brand-primary) !important;
+}
+
+/* Page transition */
+.page-enter { opacity: 0; transform: translateY(12px); }
+.page-enter-active { opacity: 1; transform: translateY(0); transition: all 400ms ease; }
