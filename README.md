@@ -1,4 +1,4 @@
-# 🛍️ Saanjh Boutique — AI-Powered Ladies Clothing Store
+# 🛍️ MAA FASHTION POIN -Ladies Clothing Store
 
 > A complete, production-ready full-stack e-commerce application built with React, Node.js, MongoDB, Razorpay, and Cloudinary.
 
