@@ -2,9 +2,9 @@ require('dotenv').config();
 const admin = require('../config/firebaseAdmin');
 const { getFirestore } = require('firebase-admin/firestore');
 
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@saanjhboutique.com').trim().toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
-const ADMIN_NAME = process.env.ADMIN_NAME || 'MAA Admin';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'maafashtionpoint';
+const ADMIN_NAME = process.env.ADMIN_NAME || 'MAA Fashion Point Admin';
 
 const ensureFirebaseAdmin = async () => {
   if (!admin) {
@@ -15,6 +15,11 @@ const ensureFirebaseAdmin = async () => {
 
   try {
     userRecord = await admin.auth().getUserByEmail(ADMIN_EMAIL);
+    userRecord = await admin.auth().updateUser(userRecord.uid, {
+      password: ADMIN_PASSWORD,
+      displayName: ADMIN_NAME,
+      emailVerified: true,
+    });
     console.log(`Firebase Auth admin already exists: ${ADMIN_EMAIL}`);
   } catch (err) {
     if (err.code !== 'auth/user-not-found') throw err;

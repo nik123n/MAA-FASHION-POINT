@@ -8,13 +8,15 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   onAuthStateChanged,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from 'firebase/auth';
 import {
   doc, setDoc, getDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from './config';
 
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'admin@saanjhboutique.com').trim().toLowerCase();
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
 
 export const signUpWithEmail = async ({ name, email, password, phone = '' }) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -114,3 +116,56 @@ export const changeUserPassword = async (currentPassword, newPassword) => {
 };
 
 export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
+
+export const clearRecaptchaVerifier = () => {
+  if (window.recaptchaVerifier) {
+    try {
+      window.recaptchaVerifier.clear();
+    } catch (e) {}
+    window.recaptchaVerifier = null;
+  }
+};
+
+export const initRecaptchaProvider = (containerId) => {
+  clearRecaptchaVerifier();
+  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    size: 'invisible',
+    callback: () => {
+      // recaptcha solved
+    }
+  });
+  return window.recaptchaVerifier;
+};
+
+export const requestPhoneOTP = async (phone, appVerifier) => {
+  return await signInWithPhoneNumber(auth, phone, appVerifier);
+};
+
+export const verifyPhoneOTP = async (confirmationResult, otp) => {
+  const cred = await confirmationResult.confirm(otp);
+  
+  const docRef = doc(db, 'users', cred.user.uid);
+  const snap = await getDoc(docRef);
+  
+  if (!snap.exists()) {
+    await setDoc(docRef, {
+      name: '',
+      email: '',
+      phone: cred.user.phoneNumber || '',
+      role: 'user',
+      avatar: '',
+      addresses: [],
+      preferences: { sizes: [], categories: [] },
+      isActive: true,
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
+    });
+  } else {
+    await updateDoc(docRef, {
+      lastLogin: serverTimestamp(),
+      phone: cred.user.phoneNumber || snap.data().phone || '',
+    });
+  }
+  
+  return cred.user;
+};

@@ -3,10 +3,11 @@ const express = require('express');
 const router = express.Router();
 const {
   register, login, getMe, updateProfile,
-  updatePassword, addAddress, deleteAddress,
+  updatePassword, addAddress, deleteAddress, resolvePhone
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
+router.get('/resolve-phone', resolvePhone);
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);

@@ -22,6 +22,7 @@ export default function ProductDetailPage() {
 
   const [activeImg, setActiveImg] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState('details');
 
@@ -30,6 +31,7 @@ export default function ProductDetailPage() {
     dispatch(fetchRecommendations(id));
     setActiveImg(0);
     setSelectedSize('');
+    setSelectedColor('');
   }, [id, dispatch]);
 
   if (loading || !product) {
@@ -59,16 +61,18 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     if (!token) { toast.error('Please login to add to cart'); navigate('/auth/login'); return; }
     if (!selectedSize) { toast.error('Please select a size'); return; }
+    if (product.colors?.length > 0 && !selectedColor) { toast.error('Please select a color'); return; }
     try {
-      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize })).unwrap();
+      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize, color: selectedColor })).unwrap();
     } catch (_) {}
   };
 
   const handleBuyNow = async () => {
     if (!token) { navigate('/auth/login'); return; }
     if (!selectedSize) { toast.error('Please select a size'); return; }
+    if (product.colors?.length > 0 && !selectedColor) { toast.error('Please select a color'); return; }
     try {
-      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize })).unwrap();
+      await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize, color: selectedColor })).unwrap();
       navigate('/cart');
     } catch (_) {}
   };
@@ -196,12 +200,14 @@ export default function ProductDetailPage() {
           {/* Colors */}
           {product.colors?.length > 0 && (
             <div className="mb-5">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Colors</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-700">Select Color {selectedColor && <span className="font-medium text-brand-600 ml-1">- {selectedColor}</span>}</p>
+              </div>
               <div className="flex gap-2">
                 {product.colors.map((c) => (
-                  <div key={c.name} title={c.name}
-                    className="w-7 h-7 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                    style={{ backgroundColor: c.hex }}
+                  <button key={c.name} title={c.name} onClick={() => setSelectedColor(c.name)}
+                    className={`w-9 h-9 rounded-full border-2 shadow-sm transition-transform ${selectedColor === c.name ? 'border-brand-700 scale-110 ring-2 ring-brand-100' : 'border-gray-200 hover:scale-110'}`}
+                    style={{ backgroundColor: c.code || c.hex }}
                   />
                 ))}
               </div>

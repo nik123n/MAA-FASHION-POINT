@@ -9,6 +9,11 @@
     --brand-dark: #1f2457;
   }
 
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
   html { scroll-behavior: smooth; }
 
   body {
@@ -23,23 +28,23 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-700 hover:bg-brand-800 text-white px-6 py-3 rounded-full font-medium transition-all duration-200 hover:shadow-[0_14px_35px_rgba(52,48,143,0.28)] hover:-translate-y-0.5 active:translate-y-0;
+    @apply bg-brand-700 hover:bg-brand-800 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow hover:shadow-xl hover:-translate-y-0.5 active:scale-95;
   }
 
   .btn-outline {
-    @apply border-2 border-brand-700 text-brand-700 hover:bg-brand-700 hover:text-white px-6 py-3 rounded-full font-medium transition-all duration-200 bg-white/80 backdrop-blur-sm;
+    @apply border border-brand-700 text-brand-700 hover:bg-brand-700 hover:text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 bg-white hover:shadow-xl active:scale-95;
   }
 
   .btn-ghost {
-    @apply text-brand-700 hover:bg-brand-50 px-4 py-2 rounded-lg transition-colors;
+    @apply text-brand-700 hover:bg-brand-50 px-4 py-2 rounded-xl transition-colors font-medium;
   }
 
   .card {
-    @apply bg-white rounded-[1.5rem] shadow-[0_12px_30px_rgba(15,23,42,0.06)] hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)] transition-shadow duration-300;
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] hover:border-gray-200 transition-all duration-300;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent transition-all duration-200 bg-white;
+    @apply w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200;
   }
 
   .badge {
@@ -71,3 +76,31 @@
 /* Page transition */
 .page-enter { opacity: 0; transform: translateY(12px); }
 .page-enter-active { opacity: 1; transform: translateY(0); transition: all 400ms ease; }
+
+/* ── Print styles for invoice ────────────────────────────────────────────── */
+@media print {
+  /* Hide everything */
+  body > * { display: none !important; }
+
+  /* Show only the invoice */
+  #printable-invoice {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: white;
+    z-index: 99999;
+    padding: 24px 32px;
+    font-size: 13px;
+    color: #111;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  /* Fix table borders */
+  #printable-invoice table { border-collapse: collapse; width: 100%; }
+  #printable-invoice th, #printable-invoice td { border-bottom: 1px solid #e5e7eb; padding: 6px 4px; }
+  #printable-invoice thead th { border-bottom: 2px solid #111; background: none; }
+}

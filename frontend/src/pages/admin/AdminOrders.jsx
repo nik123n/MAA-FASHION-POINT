@@ -26,11 +26,11 @@ export default function AdminOrders() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/orders', {
+      const { data } = await api.get('/admin/orders', {
         params: { status: filterStatus || undefined, page, limit: 15 },
       });
-      setOrders(data.orders);
-      setTotal(data.total);
+      setOrders(data.orders || []);
+      setTotal(data.total || 0);
     } catch { toast.error('Failed to load orders'); }
     finally { setLoading(false); }
   };

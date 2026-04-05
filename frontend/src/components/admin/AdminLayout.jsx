@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { FiGrid, FiShoppingBag, FiPackage, FiUsers, FiTag, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
-import { logout } from '../../store/slices/authSlice';
+import { useSelector } from 'react-redux';
+import { FiGrid, FiShoppingBag, FiPackage, FiUsers, FiTag, FiLogOut, FiMenu, FiFileText } from 'react-icons/fi';
+import { useAuth } from '../../contexts/AuthContext';
 import BrandLogo from '../common/BrandLogoNew';
 
 const NAV_ITEMS = [
@@ -11,17 +11,18 @@ const NAV_ITEMS = [
   { icon: FiPackage, label: 'Orders', to: '/admin/orders' },
   { icon: FiUsers, label: 'Users', to: '/admin/users' },
   { icon: FiTag, label: 'Coupons', to: '/admin/coupons' },
+  { icon: FiFileText, label: 'Billing', to: '/admin/billing' },
 ];
 
 export default function AdminLayout({ children }) {
   const location = useLocation();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 

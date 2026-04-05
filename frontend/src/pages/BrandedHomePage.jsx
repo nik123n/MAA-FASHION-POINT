@@ -46,6 +46,19 @@ const FEATURES = [
   { icon: FiStar, title: 'Quality Assured', desc: 'Curated looks for daily wear' },
 ];
 
+const CIRCLE_POSITIONS = [
+  { left: '8%', top: '12%', opacity: 0.3 }, { left: '22%', top: '65%', opacity: 0.2 },
+  { left: '45%', top: '8%', opacity: 0.25 }, { left: '67%', top: '78%', opacity: 0.15 },
+  { left: '80%', top: '35%', opacity: 0.3 }, { left: '15%', top: '45%', opacity: 0.2 },
+  { left: '55%', top: '55%', opacity: 0.18 }, { left: '92%', top: '20%', opacity: 0.25 },
+  { left: '33%', top: '85%', opacity: 0.15 }, { left: '73%', top: '10%', opacity: 0.22 },
+  { left: '5%', top: '80%', opacity: 0.28 }, { left: '88%', top: '60%', opacity: 0.18 },
+  { left: '40%', top: '30%', opacity: 0.2 }, { left: '62%', top: '48%', opacity: 0.25 },
+  { left: '28%', top: '18%', opacity: 0.15 }, { left: '78%', top: '85%', opacity: 0.2 },
+  { left: '50%', top: '72%', opacity: 0.18 }, { left: '18%', top: '92%', opacity: 0.22 },
+  { left: '95%', top: '50%', opacity: 0.15 }, { left: '42%', top: '96%', opacity: 0.2 },
+];
+
 export default function BrandedHomePage() {
   const dispatch = useDispatch();
   const { homeData, loading } = useSelector((s) => s.products);
@@ -86,7 +99,7 @@ export default function BrandedHomePage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-leaf-400" />
                 Caring for every women
               </div>
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-5">
+              <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-5">
                 {HERO_SLIDES[heroIdx].title}
               </h1>
               <p className="font-accent text-2xl italic text-brand-100 mb-8">
@@ -98,7 +111,7 @@ export default function BrandedHomePage() {
                   {HERO_SLIDES[heroIdx].cta}
                   <FiArrowRight size={18} />
                 </Link>
-                <Link to="/products?isTrending=true" className="inline-flex items-center gap-3 border border-white/30 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/10 transition-all">
+                <Link to="/products?isTrending=true" className="inline-flex items-center justify-center gap-3 border border-white/30 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/10 transition-all text-center">
                   Explore Trends
                 </Link>
               </div>
@@ -115,7 +128,7 @@ export default function BrandedHomePage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="rounded-[1.5rem] bg-white p-5">
                     <p className="text-xs uppercase tracking-[0.24em] text-brand-500 mb-2">Signature</p>
-                    <p className="font-display text-2xl text-brand-800">MAA FASHTION POINT </p>
+                    <p className="font-display text-2xl text-brand-800">MAA FASHION POINT </p>
                     <p className="text-sm text-gray-500 mt-2">Freshly styled outfits with a strong local identity.</p>
                   </div>
                   <div className="rounded-[1.5rem] bg-leaf-50 p-5 border border-leaf-100">
@@ -250,17 +263,18 @@ export default function BrandedHomePage() {
         </section>
       )}
 
+
       <section className="relative overflow-hidden py-20">
         <div className="absolute inset-0 bg-[linear-gradient(120deg,#34308f_0%,#253170_45%,#67bb2e_100%)]" />
         <div className="absolute inset-0 opacity-20">
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className="absolute w-32 h-32 border border-white rounded-full" style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, opacity: Math.random() * 0.5 }} />
+          {CIRCLE_POSITIONS.map((pos, i) => (
+            <div key={i} className="absolute w-32 h-32 border border-white rounded-full" style={pos} />
           ))}
         </div>
         <div className="relative z-10 max-w-3xl mx-auto text-center px-4 text-white">
           <p className="font-accent text-brand-100 italic text-xl mb-3">Limited Time Offer</p>
-          <h2 className="font-display text-5xl font-bold mb-4">Get 20% Off Your First Order</h2>
-          <p className="text-brand-100 mb-8 text-lg">Use code <span className="bg-white text-brand-700 px-3 py-1 rounded-full font-bold font-mono">WELCOME20</span> at checkout</p>
+          <h2 className="font-display text-3xl sm:text-5xl font-bold mb-4 px-2 tracking-tight">Get 20% Off Your First Order</h2>
+          <p className="text-brand-100 mb-8 text-base sm:text-lg">Use code <span className="bg-white text-brand-700 px-3 py-1 rounded-md font-bold font-mono">WELCOME20</span> at checkout</p>
           <Link to="/auth/register" className="inline-flex items-center gap-3 bg-white text-brand-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-brand-50 transition-all hover:shadow-2xl">
             Join Now And Save <FiArrowRight size={20} />
           </Link>

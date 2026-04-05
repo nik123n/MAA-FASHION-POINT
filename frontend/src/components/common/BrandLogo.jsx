@@ -84,7 +84,7 @@ export default function BrandLogo({ className = '', showText = true, compact = f
             MAA
           </div>
           <div className={`${compact ? 'text-[0.58rem]' : 'text-[0.72rem]'} font-body uppercase tracking-[0.45em] text-slate-500 mt-1`}>
-            Fashtion Point
+            Fashion Point
           </div>
         </div>
       )}

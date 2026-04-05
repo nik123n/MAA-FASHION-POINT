@@ -91,6 +91,7 @@ export default function CheckoutPage() {
             navigate(`/order-success/${order._id}`);
           } catch {
             toast.error('Payment verification failed. Contact support.');
+            setPayLoading(false);
           }
         },
         modal: { ondismiss: () => { toast.error('Payment cancelled'); setPayLoading(false); } },
@@ -259,11 +260,29 @@ export default function CheckoutPage() {
                       <FiCreditCard size={18} className="text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">Pay with Razorpay</p>
+                      <p className="font-semibold text-gray-800">Pay with Razorpay <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded ml-1 tracking-widest uppercase align-middle border border-red-200">Test Mode</span></p>
                       <p className="text-xs text-gray-500">Cards, UPI, Wallets, Net Banking</p>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500">Your payment is secured by Razorpay's 256-bit SSL encryption</p>
+                  <p className="text-[11px] text-gray-500 mb-4">Your payment is secured by Razorpay's 256-bit SSL encryption</p>
+                  
+                  <div className="bg-white/90 rounded-xl p-3 border border-brand-200 shadow-sm">
+                    <p className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Test Credentials</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                        <span className="text-[10px] text-gray-400 block mb-0.5 uppercase tracking-wider">Card Number</span>
+                        <code className="font-mono text-brand-700 font-semibold tracking-wider">4111 1111 1111 1111</code>
+                      </div>
+                      <div className="bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                        <span className="text-[10px] text-gray-400 block mb-0.5 uppercase tracking-wider">CVV / Expiry</span>
+                        <code className="font-mono text-brand-700 font-semibold tracking-wider">123 / Any Future</code>
+                      </div>
+                      <div className="bg-gray-50/50 p-2 rounded-lg border border-gray-100 col-span-2">
+                        <span className="text-[10px] text-gray-400 block mb-0.5 uppercase tracking-wider">Test UPI ID</span>
+                        <code className="font-mono text-brand-700 font-semibold tracking-wider">success@razorpay</code>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2 text-sm text-gray-600 bg-gray-50 rounded-xl p-4 mb-6">
                   <p className="font-semibold text-gray-800 mb-2">Delivery to:</p>

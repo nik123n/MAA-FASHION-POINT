@@ -1,90 +1,89 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiInstagram, FiTwitter, FiFacebook, FiYoutube, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { FiMail, FiPhone, FiMapPin, FiInstagram, FiFacebook } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import BrandLogo from './BrandLogoNew';
 
 export default function BrandedFooter() {
   return (
-    <footer className="relative overflow-hidden bg-[#19204a] text-gray-200 pt-16 pb-8">
+    <footer className="relative overflow-hidden bg-[#19204a] text-gray-200 pt-16 pb-8 border-t-[6px] border-leaf-500">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,187,46,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(225,38,28,0.12),transparent_22%)]" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+          {/* About Section */}
+          <div className="flex flex-col">
             <BrandLogo className="mb-4" />
-            <p className="text-sm text-brand-100/80 leading-relaxed mb-5">
+            <p className="text-sm text-brand-100/80 leading-relaxed mb-6 mt-4">
               A boutique space for every woman, blending tradition, comfort, and everyday confidence with a fresh local identity.
             </p>
-            <div className="flex gap-3">
-              {[FiInstagram, FiFacebook, FiTwitter, FiYoutube].map((Icon, i) => (
-                <a key={i} href="#" className="w-9 h-9 bg-white/10 hover:bg-leaf-600 rounded-full flex items-center justify-center transition-colors">
-                  <Icon size={16} />
-                </a>
-              ))}
+            <div className="flex gap-4">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-pink-600 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
+                <FiInstagram size={18} className="group-hover:text-white text-brand-100" />
+              </a>
+              <a href="https://wa.me/917567473009" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-green-500 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
+                <FaWhatsapp size={18} className="group-hover:text-white text-brand-100" />
+              </a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
+                <FiFacebook size={18} className="group-hover:text-white text-brand-100" />
+              </a>
             </div>
           </div>
 
+          {/* Quick Links Section */}
           <div>
-            <h4 className="font-display text-white text-lg mb-4">Shop</h4>
-            <ul className="space-y-2.5">
-              {['3 Piece', '3 Piece Pair', 'Short Top', '2 Piece', 'Tunic Top', 'Cotton Tunic Top', 'Long Top', 'Cord Set', 'Plazo Pair', 'Kurti Plaza Dupata', 'Kurti Pent Dupata', 'Cotton Straight Pent'].map((cat) => (
-                <li key={cat}>
-                  <Link to={`/products?category=${cat}`} className="text-sm text-brand-100/80 hover:text-leaf-300 transition-colors">{cat}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-display text-white text-lg mb-4">Account</h4>
-            <ul className="space-y-2.5">
+            <h4 className="font-display text-white text-lg mb-6 border-b border-white/10 pb-2 inline-block">Quick Links</h4>
+            <ul className="grid grid-cols-2 gap-y-3 gap-x-6">
               {[
-                { label: 'My Account', to: '/profile' },
-                { label: 'My Orders', to: '/orders' },
+                { label: 'Shop New Arrivals', to: '/products?isNewArrival=true' },
+                { label: 'Trending Collection', to: '/products?isTrending=true' },
+                { label: 'All Products', to: '/products' },
+                { label: 'My Profile', to: '/profile' },
+                { label: 'Track Orders', to: '/orders' },
                 { label: 'Wishlist', to: '/wishlist' },
                 { label: 'Shopping Cart', to: '/cart' },
               ].map((item) => (
                 <li key={item.label}>
-                  <Link to={item.to} className="text-sm text-brand-100/80 hover:text-leaf-300 transition-colors">{item.label}</Link>
+                  <Link to={item.to} className="text-sm text-brand-100/80 hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
+                    <span className="w-1 h-1 bg-leaf-400 rounded-full"></span>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
+          {/* Contact Section */}
           <div>
-            <h4 className="font-display text-white text-lg mb-4">Contact</h4>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3 text-sm text-brand-100/80">
-                <FiMapPin size={15} className="mt-0.5 text-leaf-400 shrink-0" />
-                near bageshwar mandir, Amarpara, Bagasara, Gujarat 365440
+            <h4 className="font-display text-white text-lg mb-6 border-b border-white/10 pb-2 inline-block">Contact</h4>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-4 text-sm text-brand-100/80 group">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-leaf-500 transition-colors">
+                  <FiMapPin size={15} className="text-leaf-400 group-hover:text-white transition-colors" />
+                </div>
+                <span className="mt-1 leading-snug">Near Bageshwar Mandir, Amarpara,<br/>Bagasara, Gujarat 365440</span>
               </li>
-              <li className="flex items-center gap-3 text-sm text-brand-100/80">
-                <FiPhone size={15} className="text-leaf-400" />
-                +91 75674 73009
+              <li className="flex items-center gap-4 text-sm text-brand-100/80 group">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-leaf-500 transition-colors">
+                  <FiPhone size={15} className="text-leaf-400 group-hover:text-white transition-colors" />
+                </div>
+                <span>+91 75674 73009 <span className="opacity-50 mx-1">|</span> +91 88660 28038</span>
               </li>
-              <li className="flex items-center gap-3 text-sm text-brand-100/80">
-                <FiPhone size={15} className="text-leaf-400" />
-                +91 88660 28038
-              </li>
-              <li className="flex items-center gap-3 text-sm text-brand-100/80">
-                <FiMail size={15} className="text-leaf-400" />
-                maafashtionpoint@gmail.com
+              <li className="flex items-center gap-4 text-sm text-brand-100/80 group">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-leaf-500 transition-colors">
+                  <FiMail size={15} className="text-leaf-400 group-hover:text-white transition-colors" />
+                </div>
+                <span>maafashtionpoint@gmail.com</span>
               </li>
             </ul>
-            <div className="mt-5">
-              <p className="text-xs text-brand-100/60 mb-2 uppercase tracking-[0.2em]">Newsletter</p>
-              <div className="flex">
-                <input type="email" placeholder="your@email.com" className="flex-1 bg-white/10 border border-white/10 rounded-l-full px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-leaf-400" />
-                <button className="bg-coral-600 hover:bg-coral-700 text-white px-4 py-2 rounded-r-full text-sm transition-colors">Subscribe</button>
-              </div>
-            </div>
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-brand-100/60">Copyright 2026 MAA Fashion Point. All rights reserved.</p>
+        {/* Bottom Bar */}
+        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-brand-100/60 font-medium tracking-wide">© 2026 MAA Fashion Point. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Razorpay_logo.png" alt="Razorpay" className="h-5 opacity-60" />
-            <span className="text-xs text-brand-100/60">Secure Payments</span>
+            <span className="text-xs text-brand-100/60 font-medium">Secured by</span>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Razorpay_logo.png" alt="Razorpay" className="h-4 opacity-70 grayscale hover:grayscale-0 transition-all" />
           </div>
         </div>
       </div>

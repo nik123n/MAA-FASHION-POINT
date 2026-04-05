@@ -22,9 +22,20 @@ export default function RegisterPage() {
       return;
     }
 
+    let submissionForm = { ...form };
+    let formattedPhone = submissionForm.phone.trim().replace(/[^\d+]/g, '');
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = formattedPhone.length === 10 ? `+91${formattedPhone}` : `+${formattedPhone}`;
+    }
+    submissionForm.phone = formattedPhone;
+
+    if (!submissionForm.email) {
+      submissionForm.email = `${formattedPhone.replace('+', '')}@maafashion.com`;
+    }
+
     setLoading(true);
     try {
-      await signUp(form);
+      await signUp(submissionForm);
       navigate('/');
     } catch (err) {
       console.error('RegisterPage error:', err);
@@ -81,25 +92,8 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-              <div className="relative">
-                <FiMail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  id="reg-email"
-                  type="email"
-                  value={form.email}
-                  onChange={set('email')}
-                  className="input-field pl-11"
-                  placeholder="you@example.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Phone Number <span className="text-gray-400 text-xs">(optional)</span>
+                Phone Number
               </label>
               <div className="relative">
                 <FiPhone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -109,8 +103,25 @@ export default function RegisterPage() {
                   value={form.phone}
                   onChange={set('phone')}
                   className="input-field pl-11"
-                  placeholder="+91 98765 43210"
+                  placeholder="9876543210"
                   autoComplete="tel"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-gray-400 text-xs">(optional)</span></label>
+              <div className="relative">
+                <FiMail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="reg-email"
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  className="input-field pl-11"
+                  placeholder="you@example.com"
+                  autoComplete="email"
                 />
               </div>
             </div>

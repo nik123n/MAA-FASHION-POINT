@@ -12,7 +12,7 @@ export function Footer() {
           <div>
             <div className="mb-4">
               <span className="font-display text-3xl text-white">MAA</span>
-              <span className="font-accent text-sm text-brand-300 block tracking-widest">FASHTION POINT </span>
+              <span className="font-accent text-sm text-brand-300 block tracking-widest">FASHION POINT </span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-5">
               Celebrating the modern Indian woman — where tradition meets contemporary fashion. Every piece tells a story.

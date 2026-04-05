@@ -35,12 +35,15 @@ paymentRouter.post('/webhook', handleWebhook); // no auth — Razorpay calls thi
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
 const adminRouter = express.Router();
-const { getAnalytics, getUsers, toggleUser } = require('../controllers/adminController');
+const { getAnalytics, getUsers, toggleUser, deleteUser, getAdminOrders, addOfflineSale } = require('../controllers/adminController');
 
 adminRouter.use(protect, adminOnly);
 adminRouter.get('/analytics', getAnalytics);
 adminRouter.get('/users', getUsers);
 adminRouter.patch('/users/:id/toggle', toggleUser);
+adminRouter.delete('/users/:id', deleteUser);
+adminRouter.get('/orders', getAdminOrders);
+adminRouter.post('/offline-sale', addOfflineSale);
 
 // ── WISHLIST ROUTES ───────────────────────────────────────────────────────────
 const wishlistRouter = express.Router();

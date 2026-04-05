@@ -12,7 +12,7 @@ const emptyForm = {
   name: '', description: '', price: '', discountedPrice: '', category: '3 Piece',
   fabric: '', brand: 'Saanjh', isFeatured: false, isNewArrival: false, isTrending: false,
   sizes: SIZES.map((s) => ({ size: s, stock: 0 })),
-  occasion: [], tags: '', imageUrls: '',
+  occasion: [], tags: '', imageUrls: '', colors: [],
 };
 
 export default function AdminProducts() {
@@ -75,6 +75,7 @@ export default function AdminProducts() {
       }),
       occasion: p.occasion || [], tags: p.tags?.join(', ') || '',
       imageUrls: p.images?.map((img) => img.url).join('\n') || '',
+      colors: p.colors || [],
     });
     setImages([]);
     setModalOpen(true);
@@ -96,7 +97,7 @@ export default function AdminProducts() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => {
-        if (k === 'sizes' || k === 'occasion') fd.append(k, JSON.stringify(v));
+        if (k === 'sizes' || k === 'occasion' || k === 'colors') fd.append(k, JSON.stringify(v));
         else if (k === 'imageUrls') {
           const parsedUrls = v.split('\n').map((url) => url.trim()).filter(Boolean);
           fd.append(k, JSON.stringify(parsedUrls));
@@ -305,6 +306,40 @@ export default function AdminProducts() {
                           className="input-field py-2 text-center text-sm" />
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Colors */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Colors</label>
+                    <button type="button" onClick={() => setForm({ ...form, colors: [...(form.colors || []), { name: '', code: '#000000' }] })} className="text-xs text-brand-600 font-semibold flex items-center gap-1 hover:text-brand-800">
+                      <FiPlus size={14} /> Add Color
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {form.colors?.map((c, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="color" value={c.code || '#000000'} onChange={(e) => {
+                          const newColors = [...form.colors];
+                          newColors[i].code = e.target.value;
+                          setForm({ ...form, colors: newColors });
+                        }} className="w-10 h-10 p-0 border-0 rounded cursor-pointer shrink-0" />
+                        <input type="text" placeholder="Color Name (e.g. Red)" value={c.name} onChange={(e) => {
+                          const newColors = [...form.colors];
+                          newColors[i].name = e.target.value;
+                          setForm({ ...form, colors: newColors });
+                        }} className="input-field py-2" required />
+                        <button type="button" onClick={() => {
+                          const newColors = [...form.colors];
+                          newColors.splice(i, 1);
+                          setForm({ ...form, colors: newColors });
+                        }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0">
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {(!form.colors || form.colors.length === 0) && <p className="text-xs text-gray-400 italic">No specific colors added. Product will use a default setup.</p>}
                   </div>
                 </div>
 

@@ -30,6 +30,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCoupons from './pages/admin/AdminCoupons';
+import AdminBilling from './pages/admin/AdminBilling';
 
 // ── Full-screen loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -90,6 +91,7 @@ function AppInner() {
                   <Route path="orders"   element={<AdminOrders />} />
                   <Route path="users"    element={<AdminUsers />} />
                   <Route path="coupons"  element={<AdminCoupons />} />
+                  <Route path="billing"  element={<AdminBilling />} />
                 </Routes>
               </AdminLayout>
             </AdminRoute>

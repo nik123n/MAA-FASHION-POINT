@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const admin = require('../config/firebaseAdmin');
 const { getFirestore } = require('firebase-admin/firestore');
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@saanjhboutique.com').trim().toLowerCase();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // protect — verify Firebase ID Token and load user profile from Firestore

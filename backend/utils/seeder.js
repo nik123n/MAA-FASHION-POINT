@@ -221,7 +221,7 @@ const seedDB = async () => {
     // Create admin user
     const admin = await User.create({
       name: 'Saanjh Admin',
-      email: process.env.ADMIN_EMAIL || 'admin@saanjhboutique.com',
+      email: process.env.ADMIN_EMAIL || 'maafashtionpoint@gmail.com',
       password: 'Admin@123',
       role: 'admin',
     });
@@ -245,7 +245,7 @@ const seedDB = async () => {
     console.log(`${coupons.length} coupons seeded`);
 
     console.log('\n✅ Database seeded successfully!');
-    console.log('Admin login: admin@saanjhboutique.com / Admin@123');
+    console.log(`Admin login: ${process.env.ADMIN_EMAIL || 'maafashtionpoint@gmail.com'} / ${process.env.ADMIN_PASSWORD || 'maafashtionpoint'}`);
     console.log('User login:  priya@example.com / User@123');
     console.log('Test coupons: WELCOME20, FLAT200, SAANJH10');
 

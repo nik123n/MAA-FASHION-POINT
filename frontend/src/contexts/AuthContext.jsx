@@ -11,11 +11,13 @@ import {
   addUserAddress,
   removeUserAddress,
   onAuthChange,
+  requestPhoneOTP,
+  verifyPhoneOTP,
 } from '../firebase/auth';
 import { setUser, clearUser } from '../store/slices/authSlice';
 
 const AuthContext = createContext(null);
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'admin@saanjhboutique.com').trim().toLowerCase();
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
 
 export const AuthProvider = ({ children }) => {
   const dispatch = useDispatch();
@@ -77,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       throw err;
     }
   }, []);
+
 
   const signOut = useCallback(async () => {
     try {
@@ -141,6 +144,8 @@ export const AuthProvider = ({ children }) => {
       signUp,
       signIn,
       signOut,
+
+
       updateProfile,
       changePassword,
       addAddress,
@@ -176,6 +181,8 @@ function getFirebaseErrorMessage(code) {
     'permission-denied': 'Firestore blocked profile creation. Update your Firestore rules for signed-in users.',
     'failed-precondition': 'Firestore database is not ready yet. Create the Firestore database in Firebase Console.',
     'unavailable': 'Firestore is temporarily unavailable. Please try again.',
+    'auth/invalid-verification-code': 'Invalid OTP code. Please try again.',
+    'auth/invalid-phone-number': 'Invalid phone number format. Include country code (e.g. +91).',
   };
   return map[code] || 'Something went wrong. Please try again.';
 }

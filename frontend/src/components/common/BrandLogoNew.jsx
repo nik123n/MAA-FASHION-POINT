@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export default function BrandLogoNew({ className = '', showText = true, compact = false }) {
   const sizeClass = compact ? 'w-14 h-14' : 'w-20 h-20';
   const [imageFailed, setImageFailed] = useState(false);
-  const imageSrc = '/maa-family-logo.png';
+  const imageSrc = '/MAA.svg';
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -11,12 +11,12 @@ export default function BrandLogoNew({ className = '', showText = true, compact 
         {!imageFailed ? (
           <img
             src={imageSrc}
-            alt="MAA Family logo"
-            className="w-full h-full object-cover"
+            alt="MAA Fashion Point logo"
+            className="w-full h-full object-contain bg-white"
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <svg viewBox="0 0 120 120" className="w-full h-full" role="img" aria-label="MAA Family logo">
+          <svg viewBox="0 0 120 120" className="w-full h-full" role="img" aria-label="MAA Fashion Point logo">
             <rect width="120" height="120" fill="#ffffff" />
             <path
               d="M18 33c5-8 13-12 22-12 5 0 9 2 12 6 3 3 3 8 0 12-4 5-6 10-6 15v18c0 16-8 30-25 42-4 3-8-1-7-6l6-13-1-14c-1-16 0-31-1-48z"
@@ -60,8 +60,8 @@ export default function BrandLogoNew({ className = '', showText = true, compact 
 
       {showText && (
         <div className="min-w-0">
-          <div className={`${compact ? 'text-[1.3rem]' : 'text-[1.9rem]'} font-display leading-none tracking-[0.08em] text-[#e1261c]`}>
-            MAA <span className="text-[#58a90a]">Family</span>
+          <div className={`${compact ? 'text-[1.05rem]' : 'text-[1.6rem]'} font-display leading-none tracking-[0.06em] text-[#e1261c]`}>
+            MAA <span className="text-[#58a90a]">Fashion Point</span>
           </div>
           <div className={`${compact ? 'text-[0.55rem]' : 'text-[0.78rem]'} font-body font-semibold tracking-[0.02em] text-[#34308f] mt-1`}>
             Exclusive for Women

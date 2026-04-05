@@ -85,7 +85,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link to="/" className="flex-shrink-0">
               <span className="font-display text-2xl text-brand-700 tracking-wider">MAA </span>
-              <span className="font-accent text-sm text-gray-400 block -mt-1 tracking-widest ml-0.5">FASHTION POINT </span>
+              <span className="font-accent text-sm text-gray-400 block -mt-1 tracking-widest ml-0.5">FASHION POINT </span>
             </Link>
 
             {/* Desktop Nav */}
