@@ -38,25 +38,27 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ==========================================
 // 2. CORS CONFIGURATION
 // ==========================================
-// To enable CORS for your frontend dynamically
+// Allow CORS for local dev and your Vercel frontend
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  process.env.FRONTEND_URL // Will allow your Render/GitHub pages URL if defined
-].filter(Boolean);
+  'https://maa-fashion-point.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean).map(url => url.replace(/\/$/, '')); // Remove trailing slashes just in case!
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, or Postman)
     if (!origin) return callback(null, true);
     
-    // You can temporarily replace this logic with `return callback(null, true);` 
-    // to allow ALL origins during early testing on Render.
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    // Check if the request origin matches exactly OR if it's a Vercel preview domain
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      process.env.NODE_ENV === 'development' ||
+                      origin.endsWith('.vercel.app'); // Allows dynamic Vercel previews too
+    
+    if (isAllowed) {
       return callback(null, true);
     }
     
-    // If the origin is not allowed
     return callback(new Error(`CORS policy: The origin ${origin} is not allowed.`));
   },
   credentials: true,
