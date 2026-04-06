@@ -1,0 +1,12 @@
+{
+  "name": "maa-fashion-point-root",
+  "version": "1.0.0",
+  "description": "Root package for Railway backend deployment",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "postinstall": "cd backend && npm install",
+    "start": "cd backend && node server.js"
+  }
+}
