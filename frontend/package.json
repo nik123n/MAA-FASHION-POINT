@@ -1,7 +1,6 @@
 {
   "name": "saanjh-boutique-frontend",
   "version": "1.0.0",
-  "homepage": "https://nik123n.github.io/MAA-FASHION-POINT",
   "private": true,
   "type": "module",
   "scripts": {
