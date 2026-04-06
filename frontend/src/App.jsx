@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { fetchCart } from './store/slices/allSlices';
 
+
 // Layout
 import Navbar from './components/common/BrandedNavbar';
 import Footer from './components/common/BrandedFooter';
@@ -87,12 +88,12 @@ function AppInner() {
             <AdminRoute>
               <AdminLayout>
                 <Routes>
-                  <Route path="/"        element={<AdminDashboard />} />
+                  <Route path="/" element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders"   element={<AdminOrders />} />
-                  <Route path="users"    element={<AdminUsers />} />
-                  <Route path="coupons"  element={<AdminCoupons />} />
-                  <Route path="billing"  element={<AdminBilling />} />
+                  <Route path="orders" element={<AdminOrders />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="coupons" element={<AdminCoupons />} />
+                  <Route path="billing" element={<AdminBilling />} />
                 </Routes>
               </AdminLayout>
             </AdminRoute>
@@ -107,22 +108,22 @@ function AppInner() {
               <Navbar />
               <main className="min-h-screen">
                 <Routes>
-                  <Route path="/"                 element={<HomePage />} />
-                  <Route path="/products"         element={<ProductsPage />} />
-                  <Route path="/products/:id"     element={<ProductDetailPage />} />
-                  <Route path="/cart"             element={<CartPage />} />
-                  <Route path="/wishlist"         element={<WishlistPage />} />
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/products/:id" element={<ProductDetailPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/wishlist" element={<WishlistPage />} />
 
                   {/* Auth (guests only) */}
-                  <Route path="/auth/login"    element={<GuestRoute><LoginPage /></GuestRoute>} />
+                  <Route path="/auth/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
                   <Route path="/auth/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
                   {/* Protected */}
-                  <Route path="/checkout"           element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                  <Route path="/order-success/:id"  element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
-                  <Route path="/orders"             element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-                  <Route path="/orders/:id"         element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
-                  <Route path="/profile"            element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                  <Route path="/order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
+                  <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                  <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
