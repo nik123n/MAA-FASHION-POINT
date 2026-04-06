@@ -38,7 +38,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ==========================================
 // 2. CORS CONFIGURATION
 // ==========================================
-// Allow CORS for local dev and your Vercel frontend
+// Allow CORS for local dev, Vercel, and Netlify frontends
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -50,10 +50,11 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     
-    // Check if the request origin matches exactly OR if it's a Vercel preview domain
+    // Check if the request origin matches exactly OR if it's a Vercel/Netlify preview domain
     const isAllowed = allowedOrigins.includes(origin) || 
                       process.env.NODE_ENV === 'development' ||
-                      origin.endsWith('.vercel.app'); // Allows dynamic Vercel previews too
+                      origin.endsWith('.vercel.app') || 
+                      origin.endsWith('.netlify.app'); // Added Netlify Support!
     
     if (isAllowed) {
       return callback(null, true);
