@@ -180,34 +180,35 @@ export default function ProductsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-display text-3xl text-gray-900">
-            {search ? `Results for "${search}"` : selectedCategories.length === 1 ? selectedCategories[0] : 'All Products'}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">{pagination?.total || 0} products found</p>
+      {/* Header / Filter Bar */}
+      <div className="sticky top-16 lg:static z-30 bg-white lg:bg-transparent -mx-4 px-4 lg:mx-0 lg:px-0 border-b border-gray-200 lg:border-none mb-4 lg:mb-6">
+        {/* Desktop Header */}
+        <div className="hidden lg:flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-3xl text-gray-900">
+              {search ? `Results for "${search}"` : selectedCategories.length === 1 ? selectedCategories[0] : 'All Products'}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">{pagination?.total || 0} products found</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="input-field py-2 text-sm w-48">
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
 
-        {/* Sort + Filter Controls */}
-        <div className="flex items-center gap-3">
-          <select
-            value={sort}
-            onChange={(e) => updateParam('sort', e.target.value)}
-            className="input-field py-2 text-sm w-48"
-          >
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-
-          {/* Mobile filter toggle */}
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className="lg:hidden flex items-center gap-2 border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 hover:border-brand-300 transition-colors"
-          >
-            <FiFilter size={16} />
-            Filters
-            {activeFilterCount > 0 && <span className="w-5 h-5 bg-brand-600 text-white text-xs rounded-full flex items-center justify-center">{activeFilterCount}</span>}
+        {/* Mobile Sticky Bar */}
+        <div className="flex lg:hidden items-center justify-between h-12 w-full pb-safe">
+          <button onClick={() => setFiltersOpen(true)} className="flex flex-1 items-center justify-center gap-2 text-[13px] font-medium text-gray-700 h-full border-r border-gray-200">
+            <FiFilter size={16} /> Filter {activeFilterCount > 0 && <span className="w-4 h-4 bg-accent-600 text-white rounded-full flex items-center justify-center text-[10px]">{activeFilterCount}</span>}
           </button>
+          
+          <div className="flex flex-1 items-center justify-center gap-2 text-[13px] font-medium text-gray-700 h-full relative">
+            Sort <FiChevronDown size={14} className="text-gray-400"/>
+            <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="absolute opacity-0 inset-0 w-full h-full cursor-pointer">
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -234,7 +235,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-6">
                 {products.map((p, i) => <ProductCard key={p._id} product={p} index={i} />)}
               </div>
 

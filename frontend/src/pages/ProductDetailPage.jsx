@@ -90,10 +90,10 @@ export default function ProductDetailPage() {
         <span className="text-gray-400 truncate max-w-[200px]">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 overflow-visible">
         {/* ── IMAGE GALLERY ── */}
         <div className="space-y-3">
-          <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-gray-100 group">
+          <div className="relative aspect-[3/4] overflow-visible sm:overflow-hidden sm:rounded-2xl bg-gray-100 group -mx-4 sm:mx-0">
             <motion.img
               key={activeImg}
               initial={{ opacity: 0 }}
@@ -130,7 +130,7 @@ export default function ProductDetailPage() {
 
           {/* Thumbnails */}
           {product.images?.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-4 sm:mx-0 px-4 sm:px-0">
               {product.images.map((img, i) => (
                 <button
                   key={i}
@@ -174,11 +174,11 @@ export default function ProductDetailPage() {
           {/* Rating */}
           {product.numReviews > 0 && (
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center gap-1 bg-green-50 border border-green-200 px-3 py-1 rounded-full">
-                <FiStar size={14} className="text-green-600 fill-current" />
-                <span className="text-sm font-semibold text-green-700">{product.rating?.toFixed(1)}</span>
+              <div className="flex items-center gap-1 bg-green-600 px-2 py-0.5 rounded text-white text-[12px] font-bold">
+                {product.rating?.toFixed(1)}
+                <FiStar size={12} className="fill-current" />
               </div>
-              <span className="text-sm text-gray-500">{product.numReviews} reviews</span>
+              <span className="text-sm text-gray-500">{product.numReviews} ratings</span>
               <span className="text-sm text-gray-400">·</span>
               <span className="text-sm text-gray-500">{product.sold} sold</span>
             </div>
@@ -265,12 +265,12 @@ export default function ProductDetailPage() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex gap-3 mb-6">
-            <button onClick={handleAddToCart} className="flex-1 btn-outline flex items-center justify-center gap-2">
-              <FiShoppingBag size={18} /> Add to Cart
+          <div className="fixed bottom-0 left-0 right-0 z-[70] bg-white p-3 sm:px-4 border-t border-gray-200 flex gap-3 lg:relative lg:p-0 lg:border-none lg:z-auto lg:bg-transparent lg:mb-6 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] lg:shadow-none pb-safe">
+            <button onClick={handleAddToCart} className="flex-1 py-3.5 lg:w-auto bg-white border border-gray-300 hover:border-gray-400 text-gray-800 rounded-xl font-bold text-[14px]">
+              ADD TO CART
             </button>
-            <button onClick={handleBuyNow} className="flex-1 btn-primary flex items-center justify-center gap-2">
-              Buy Now
+            <button onClick={handleBuyNow} className="flex-1 py-3.5 lg:w-auto bg-accent-600 hover:bg-accent-700 text-white rounded-xl font-bold text-[14px]">
+              BUY NOW
             </button>
           </div>
 

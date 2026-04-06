@@ -7,6 +7,7 @@ import { fetchCart } from './store/slices/allSlices';
 // Layout
 import Navbar from './components/common/BrandedNavbar';
 import Footer from './components/common/BrandedFooter';
+import MobileBottomNav from './components/common/MobileBottomNav';
 import ScrollToTop from './components/common/ScrollToTop';
 
 // Pages
@@ -127,6 +128,7 @@ function AppInner() {
                 </Routes>
               </main>
               <Footer />
+              <MobileBottomNav />
             </>
           }
         />

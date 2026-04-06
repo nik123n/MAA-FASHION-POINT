@@ -17,10 +17,7 @@
   html { scroll-behavior: smooth; }
 
   body {
-    @apply font-body text-gray-800 bg-[#f8f8f4] antialiased;
-    background-image:
-      radial-gradient(circle at top left, rgba(103, 187, 46, 0.16), transparent 28%),
-      radial-gradient(circle at top right, rgba(52, 48, 143, 0.12), transparent 30%);
+    @apply font-body text-gray-800 bg-gray-50 antialiased;
   }
 
   h1, h2, h3 { @apply font-display; }

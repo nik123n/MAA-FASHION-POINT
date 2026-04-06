@@ -6,6 +6,7 @@ import { FiArrowRight, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield } f
 import { fetchHomeProducts } from '../store/slices/allSlices';
 import ProductCard, { ProductCardSkeleton } from '../components/product/ProductCard';
 import BrandLogo from '../components/common/BrandLogoNew';
+import CategoryScroll from '../components/home/CategoryScroll';
 
 const CATEGORY_DATA = [
   { name: '3 Piece', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=500&fit=crop', color: 'from-brand-900/65' },
@@ -72,7 +73,12 @@ export default function BrandedHomePage() {
 
   return (
     <div className="animate-fade-in">
-      <section className="relative overflow-hidden min-h-[78vh]">
+      {/* Mobile Category Scroll */}
+      <div className="md:hidden pt-2">
+        <CategoryScroll />
+      </div>
+
+      <section className="relative overflow-hidden min-h-[50vh] lg:min-h-[78vh]">
         {HERO_SLIDES.map((slide, i) => (
           <motion.div
             key={i}
@@ -87,7 +93,7 @@ export default function BrandedHomePage() {
         ))}
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center min-h-[78vh]">
+          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center min-h-[50vh] lg:min-h-[78vh]">
             <motion.div
               key={heroIdx}
               initial={{ opacity: 0, x: -30 }}

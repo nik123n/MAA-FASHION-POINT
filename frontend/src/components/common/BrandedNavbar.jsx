@@ -133,11 +133,8 @@ export default function BrandedNavbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20 gap-4">
             
-            {/* Left: Mobile Toggle & Logo */}
+            {/* Left: Logo */}
             <div className="flex items-center gap-3">
-              <button ref={mobileToggleRef} onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
-                <FiMenu size={24} />
-              </button>
               <Link to="/" className="flex-shrink-0">
                 <BrandLogo compact showText={false} />
               </Link>
@@ -255,7 +252,7 @@ export default function BrandedNavbar() {
               </button>
 
               {/* Icons Group */}
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="hidden md:flex items-center gap-1 sm:gap-2">
                 <Link to="/wishlist" className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors group">
                   <FiHeart size={22} className="group-hover:text-red-500 transition-colors" />
                   {wishlistCount > 0 && (
@@ -336,100 +333,6 @@ export default function BrandedNavbar() {
           </div>
         </div>
 
-        {/* Mobile Sidebar Overlay */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Mobile Sidebar */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              ref={mobileMenuRef}
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className="fixed top-0 left-0 bottom-0 w-4/5 max-w-[300px] bg-white z-50 lg:hidden shadow-2xl flex flex-col"
-            >
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-brand-50">
-                {authUser ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-brand-200 flex items-center justify-center text-brand-700 font-bold text-lg">
-                      {user?.name?.[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800 leading-tight">{user?.name}</h4>
-                      <Link to="/profile" onClick={() => setMobileOpen(false)} className="text-[12px] text-brand-600 font-medium hover:underline">View Profile</Link>
-                    </div>
-                  </div>
-                ) : (
-                  <BrandLogo compact showText={true} />
-                )}
-                <button onClick={() => setMobileOpen(false)} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors bg-white shadow-sm">
-                  <FiX size={20} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto py-4">
-                <nav className="space-y-1 px-3">
-                  <Link to="/" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[15px] font-medium text-gray-700 hover:bg-gray-50 rounded-xl">Home</Link>
-                  
-                  <div className="px-4 py-3">
-                    <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
-                    <div className="space-y-0.5 border-l-2 border-gray-100 ml-2 pl-3">
-                      {CATEGORIES.map((cat) => (
-                        <Link 
-                          key={cat} 
-                          to={`/products?category=${cat}`} 
-                          onClick={() => setMobileOpen(false)}
-                          className="block py-2 text-[14px] text-gray-600 hover:text-brand-600"
-                        >
-                          {cat}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Link to="/products?isNewArrival=true" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[15px] font-medium text-gray-700 hover:bg-gray-50 rounded-xl">New Arrivals</Link>
-                  <Link to="/products?isTrending=true" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-[15px] font-medium text-gray-700 hover:bg-gray-50 rounded-xl">Trending</Link>
-                </nav>
-
-                <div className="my-4 border-t border-gray-100" />
-
-                <div className="px-3 space-y-1">
-                  {authUser ? (
-                    <>
-                      <Link to="/orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-[15px] font-medium text-gray-700 hover:bg-gray-50 rounded-xl">
-                        <FiPackage size={18} className="text-gray-400" /> My Orders
-                      </Link>
-                      {authUser.role === 'admin' && (
-                        <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-[15px] font-medium text-brand-700 hover:bg-brand-50 rounded-xl">
-                          <FiSettings size={18} className="text-brand-500" /> Admin Panel
-                        </Link>
-                      )}
-                      <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="flex items-center gap-3 w-full text-left px-4 py-3 text-[15px] font-medium text-red-600 hover:bg-red-50 rounded-xl">
-                        <FiLogOut size={18} className="text-red-400" /> Logout
-                      </button>
-                    </>
-                  ) : (
-                    <div className="px-4 py-2 space-y-3">
-                      <Link to="/auth/login" onClick={() => setMobileOpen(false)} className="block w-full bg-brand-700 text-white text-center py-3 rounded-xl font-medium shadow-sm">Login to Account</Link>
-                      <Link to="/auth/register" onClick={() => setMobileOpen(false)} className="block w-full bg-white border border-brand-700 text-brand-700 text-center py-3 rounded-xl font-medium">Create Account</Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
 
       {/* Mobile Full Screen Search */}

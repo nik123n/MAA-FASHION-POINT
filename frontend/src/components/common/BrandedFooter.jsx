@@ -6,7 +6,7 @@ import BrandLogo from './BrandLogoNew';
 
 export default function BrandedFooter() {
   return (
-    <footer className="relative overflow-hidden bg-[#19204a] text-gray-200 pt-16 pb-8 border-t-[6px] border-leaf-500">
+    <footer className="relative overflow-hidden bg-[#19204a] text-gray-200 pt-16 pb-24 md:pb-8 border-t-[6px] border-leaf-500 pb-safe">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,187,46,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(225,38,28,0.12),transparent_22%)]" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">

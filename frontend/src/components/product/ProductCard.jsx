@@ -42,8 +42,8 @@ export default function ProductCard({ product, index = 0 }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
     >
-      <Link to={`/products/${product._id}`} className="group block">
-        <div className="relative overflow-hidden rounded-2xl bg-gray-100">
+      <Link to={`/products/${product._id}`} className="group block h-full">
+        <div className="relative overflow-hidden rounded-t-xl bg-gray-100">
           {/* Image */}
           <div className="aspect-[3/4] overflow-hidden">
             <img
@@ -68,9 +68,9 @@ export default function ProductCard({ product, index = 0 }) {
           )}
 
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
             {discount > 0 && (
-              <span className="badge bg-brand-600 text-white text-[11px] font-semibold">{discount}% OFF</span>
+              <span className="badge bg-accent-500 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm">-{discount}%</span>
             )}
             {product.isNewArrival && (
               <span className="badge bg-emerald-500 text-white text-[11px] font-semibold">NEW</span>
@@ -83,11 +83,11 @@ export default function ProductCard({ product, index = 0 }) {
           {/* Wishlist */}
           <button
             onClick={handleWishlist}
-            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-              isWishlisted ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 opacity-0 group-hover:opacity-100'
-            } shadow-md hover:scale-110`}
+            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all bg-white shadow-sm z-10 ${
+              isWishlisted ? 'text-accent-500' : 'text-gray-400'
+            }`}
           >
-            <FiHeart size={15} fill={isWishlisted ? 'currentColor' : 'none'} />
+            <FiHeart size={14} fill={isWishlisted ? 'currentColor' : 'none'} />
           </button>
 
           {/* Quick Add */}
@@ -100,24 +100,31 @@ export default function ProductCard({ product, index = 0 }) {
         </div>
 
         {/* Info */}
-        <div className="pt-3 px-1">
-          <p className="text-xs text-gray-400 mb-0.5">{product.category}</p>
-          <h3 className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-700 transition-colors">
-            {product.name}
-          </h3>
+        <div className="pt-2 px-2 pb-3 bg-white border-x border-b border-gray-100 rounded-b-xl flex flex-col justify-between flex-1">
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{product.category}</p>
+            <h3 className="text-[13px] font-medium text-gray-800 line-clamp-1 group-hover:text-accent-600 transition-colors">
+              {product.name}
+            </h3>
+          </div>
           <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900">
-                ₹{(product.discountedPrice || product.price).toLocaleString()}
-              </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-gray-900 text-[14px]">
+                  ₹{(product.discountedPrice || product.price).toLocaleString()}
+                </span>
+              </div>
               {product.discountedPrice && (
-                <span className="text-xs text-gray-400 line-through">₹{product.price.toLocaleString()}</span>
+                <span className="text-[11px] text-gray-400 line-through">₹{product.price.toLocaleString()}</span>
               )}
             </div>
-            {product.rating > 0 && (
-              <div className="flex items-center gap-1">
-                <FiStar size={12} className="text-amber-400 fill-current" />
-                <span className="text-xs text-gray-500">{product.rating.toFixed(1)}</span>
+            {product.rating > 0 ? (
+              <div className="flex items-center gap-0.5 bg-green-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                {product.rating.toFixed(1)} <FiStar size={10} className="fill-current" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-0.5 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                New
               </div>
             )}
           </div>
