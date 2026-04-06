@@ -154,7 +154,14 @@ const normalizeProductInput = (input = {}, existing = {}) => {
 
 const listProducts = async () => {
   const db = getDb();
-  const snapshot = await db.collection('products').get();
+  // 🔥 Performance Guard: Prevent loading > 5000 products in memory at once 
+  // (In the future, migrate to proper query pagination over the network)
+  const snapshot = await db.collection('products').limit(5000).get();
+  
+  if (snapshot.size === 5000) {
+    console.warn("⚠️ Memory Guard Activated: Product fetch hit the 5000 document hard limit.");
+  }
+
   return snapshot.docs.map((doc) => ensureProductShape(doc.id, doc.data()));
 };
 
