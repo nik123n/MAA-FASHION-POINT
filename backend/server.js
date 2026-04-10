@@ -31,20 +31,7 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 const app = express();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const parseAllowedOrigins = () => {
-  const configured = [process.env.FRONTEND_URL, process.env.ADDITIONAL_FRONTEND_URLS]
-    .filter(Boolean)
-    .flatMap((v) => String(v).split(','))
-    .map((v) => v.trim().replace(/\/$/, ''))
-    .filter(Boolean);
-
-  const devOrigins =
-    process.env.NODE_ENV !== 'production'
-      ? ['http://localhost:5173', 'http://127.0.0.1:5173']
-      : [];
-
-  return [...new Set([...devOrigins, ...configured])];
-};
+// ── CORS Helper (Removed, fully hardcoded in middleware) ──────────────────────
 
 // ── Capture raw body for Razorpay webhook HMAC verification ───────────────────
 const captureWebhookRawBody = (req, res, buffer) => {
@@ -111,23 +98,23 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 // GZIP compression
 app.use(compression());
 
-// CORS
-const allowedOrigins = parseAllowedOrigins();
-logger.info('CORS allowed origins', { origins: allowedOrigins });
+// Custom incoming request logger
+app.use((req, res, next) => {
+  logger.info(`Incoming Request: ${req.method} ${req.originalUrl}`);
+  console.log(`Incoming Request: ${req.method} ${req.originalUrl}`);
+  next();
+});
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Server-to-server / curl
-      const normalized = origin.replace(/\/$/, '');
-      if (allowedOrigins.includes(normalized)) return callback(null, true);
-      return callback(new Error(`CORS policy: origin ${origin} not allowed`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+// CORS
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://maafashionpoint.netlify.app"
+  ],
+  credentials: true
+}));
+
+app.options("*", cors());
 
 // ============================================================
 // RATE LIMITING — applied per route group
