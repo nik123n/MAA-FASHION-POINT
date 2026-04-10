@@ -23,6 +23,8 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const couponRoutes = require('./routes/couponRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 
 const { errorHandler } = require('./middleware/errorMiddleware');
 
@@ -173,6 +175,8 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/coupons', couponRoutes);
+app.use('/api/v1/activity', activityRoutes);
+app.use('/api/v1/recommendations', recommendationRoutes);
 
 // Backward-compatible aliases (v0 → v1 redirect)
 app.use('/api/auth', authRoutes);
