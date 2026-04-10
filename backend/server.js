@@ -1,12 +1,20 @@
 require('dotenv').config();
+
+// ── 1. ENV VALIDATION (fail fast before anything else) ────────────────────────
+const { validateEnv } = require('./utils/envValidation');
+validateEnv();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
+const compression = require('compression');
+const Sentry = require('@sentry/node');
+const { logger } = require('./utils/logger');
+const { globalLimiter, authLimiter, paymentLimiter, adminLimiter, writeLimiter } = require('./middleware/rateLimiter');
 
-// --- Route Imports ---
+// ── Route Imports ─────────────────────────────────────────────────────────────
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
@@ -16,99 +24,157 @@ const adminRoutes = require('./routes/adminRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 
-// --- Middleware Imports ---
 const { errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
 
-// ==========================================
-// 1. SECURITY & UTILITY MIDDLEWARE
-// ==========================================
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const parseAllowedOrigins = () => {
+  const configured = [process.env.FRONTEND_URL, process.env.ADDITIONAL_FRONTEND_URLS]
+    .filter(Boolean)
+    .flatMap((v) => String(v).split(','))
+    .map((v) => v.trim().replace(/\/$/, ''))
+    .filter(Boolean);
 
-// Basic security headers
-app.use(helmet());
+  const devOrigins =
+    process.env.NODE_ENV !== 'production'
+      ? ['http://localhost:5173', 'http://127.0.0.1:5173']
+      : [];
 
-// Logging for requests
-app.use(morgan('dev'));
+  return [...new Set([...devOrigins, ...configured])];
+};
 
-// Payload size limitations
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// ── Capture raw body for Razorpay webhook HMAC verification ───────────────────
+const captureWebhookRawBody = (req, res, buffer) => {
+  if (req.originalUrl.includes('/payments/webhook') && buffer?.length) {
+    req.rawBody = Buffer.from(buffer);
+  }
+};
 
-// ==========================================
-// 2. CORS CONFIGURATION
-// ==========================================
-// Allow CORS for local dev, Vercel, and Netlify frontends
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://maa-fashion-point.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean).map(url => url.replace(/\/$/, '')); // Remove trailing slashes just in case!
+// ── Sentry initialization ──────────────────────────────────────────────────────
+const sentryDsn = (process.env.SENTRY_DSN || '').trim();
+const sentryEnabled = /^https?:\/\//i.test(sentryDsn);
+const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    // Check if the request origin matches exactly OR if it's a Vercel/Netlify preview domain
-    const isAllowed = allowedOrigins.includes(origin) || 
-                      process.env.NODE_ENV === 'development' ||
-                      origin.endsWith('.vercel.app') || 
-                      origin.endsWith('.netlify.app'); // Added Netlify Support!
-    
-    if (isAllowed) {
-      return callback(null, true);
-    }
-    
-    return callback(new Error(`CORS policy: The origin ${origin} is not allowed.`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+if (sentryEnabled) {
+  Sentry.init({
+    dsn: sentryDsn,
+    // ✅ 10% sampling in production — not 100%
+    tracesSampleRate: isProduction ? 0.1 : 1.0,
+    integrations: [Sentry.expressIntegration()],
+    environment: process.env.NODE_ENV || 'development',
+  });
+  logger.info('Sentry initialized', { dsn: sentryDsn.slice(0, 30) + '...' });
+} else {
+  logger.warn('Sentry disabled — SENTRY_DSN not configured');
+}
 
-// ==========================================
-// 3. RATE LIMITING
-// ==========================================
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per 15 mins
-  message: { success: false, message: 'Too many requests from this IP, please try again later.' },
-});
-app.use('/api/', limiter);
+// ============================================================
+// MIDDLEWARE STACK
+// ============================================================
 
-// ==========================================
-// 4. STATIC DIRECTORIES
-// ==========================================
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res) => {
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  },
-}));
+// Security headers (strict in production)
+app.use(
+  helmet({
+    contentSecurityPolicy: isProduction
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https://checkout.razorpay.com'],
+            frameSrc: ["'self'", 'https://api.razorpay.com'],
+            imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://firebasestorage.googleapis.com'],
+            connectSrc: ["'self'", 'https://api.razorpay.com', 'https://*.googleapis.com'],
+          },
+        }
+      : false, // Disable CSP in development for easy debugging
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
-// ==========================================
-// 5. APPLICATION ROUTES
-// ==========================================
+// Structured logging — JSON in prod, colorized in dev
+app.use(
+  morgan(isProduction ? 'combined' : 'dev', {
+    stream: {
+      write: (message) => logger.info(message.trim()),
+    },
+    // Skip health check logs in production to reduce noise
+    skip: (req) => isProduction && req.path === '/api/health',
+  })
+);
 
-// Root Route (fixes the "Route not found: /" issue)
+// Parse JSON (with rawBody capture for webhook)
+app.use(express.json({ limit: '5mb', verify: captureWebhookRawBody }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// GZIP compression
+app.use(compression());
+
+// CORS
+const allowedOrigins = parseAllowedOrigins();
+logger.info('CORS allowed origins', { origins: allowedOrigins });
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // Server-to-server / curl
+      const normalized = origin.replace(/\/$/, '');
+      if (allowedOrigins.includes(normalized)) return callback(null, true);
+      return callback(new Error(`CORS policy: origin ${origin} not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// ============================================================
+// RATE LIMITING — applied per route group
+// ============================================================
+app.use('/api/', globalLimiter);
+app.use('/api/v1/auth', authLimiter);
+app.use('/api/v1/payments', paymentLimiter);
+app.use('/api/v1/admin', adminLimiter);
+app.use('/api/v1/orders', writeLimiter);
+app.use('/api/v1/cart', writeLimiter);
+
+// ============================================================
+// ROUTES — versioned under /api/v1/
+// ============================================================
+
+// Root
 app.get('/', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API is running 🚀",
-    env: process.env.NODE_ENV || 'development'
-  });
+  res.json({ success: true, message: 'MAA Fashion Point API 🚀', version: 'v1' });
 });
 
-// Health check route for Render
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    backend: 'firebase-ready',
-    timestamp: new Date().toISOString(),
-  });
+// Health check — includes Firebase connection test
+app.get('/api/health', async (req, res) => {
+  const status = { status: 'ok', version: 'v1', timestamp: new Date().toISOString() };
+
+  try {
+    const { getFirestore } = require('firebase-admin/firestore');
+    const db = getFirestore();
+    await db.collection('_health').doc('ping').set({ ping: true }, { merge: true });
+    status.firebase = 'connected';
+  } catch (err) {
+    status.firebase = 'error';
+    status.firebaseError = err.message;
+    return res.status(503).json(status);
+  }
+
+  res.json(status);
 });
 
-// Core API Routes
+// Versioned API routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
+app.use('/api/v1/coupons', couponRoutes);
+
+// Backward-compatible aliases (v0 → v1 redirect)
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
@@ -118,34 +184,32 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/coupons', couponRoutes);
 
-// ==========================================
-// 6. ERROR HANDLING
-// ==========================================
+// ============================================================
+// ERROR HANDLING
+// ============================================================
 
-// Catch-all for unknown routes (404)
-app.use('*', (req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: `API Route not found: ${req.originalUrl}`
-  });
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// Global Error Handler
+if (sentryEnabled) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.use(errorHandler);
 
-// ==========================================
-// 7. SERVER INITIALIZATION
-// ==========================================
+// ============================================================
+// START SERVER
+// ============================================================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n=================================`);
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  if (process.env.FRONTEND_URL) {
-    console.log(`🔗 Allowed Frontend: ${process.env.FRONTEND_URL}`);
-  }
-  console.log(`=================================\n`);
+  logger.info(`Server started`, {
+    port: PORT,
+    env: process.env.NODE_ENV || 'development',
+    frontend: process.env.FRONTEND_URL,
+  });
 });
 
 module.exports = app;

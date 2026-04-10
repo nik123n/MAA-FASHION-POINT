@@ -7,9 +7,14 @@ import { toggleWishlist } from '../../store/slices/allSlices';
 import { addToCart } from '../../store/slices/allSlices';
 import toast from 'react-hot-toast';
 
-const FALLBACK_IMAGE = 'https://via.placeholder.com/400x533?text=No+Image';
+const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" viewBox="0 0 400 533"><rect width="400" height="533" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%239ca3af">No Image</text></svg>';
 
 export default function ProductCard({ product, index = 0 }) {
+  // Debug log
+  // if (product && product._id) {
+  //   console.log(`ProductCard [${product._id.slice(-4)}]: images=`, product.images);
+  // }
+
   const dispatch = useDispatch();
   const { items: wishlist } = useSelector((s) => s.wishlist);
   const { token } = useSelector((s) => s.auth);

@@ -1,41 +1,62 @@
+/**
+ * api.js
+ * Secure Axios instance for all backend API calls.
+ *
+ * - Automatically attaches fresh Firebase ID token
+ * - Updated to /api/v1 base path
+ * - Forces token refresh on 401
+ * - 1 retry on 5xx errors
+ */
+
 import axios from 'axios';
 import { auth } from '../firebase/config';
 
-// In production (GitHub Pages), VITE_API_URL must be set to your Render/Railway backend URL.
-// In development, Vite proxy handles /api → localhost:5000.
 const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+  ? `${import.meta.env.VITE_API_URL}/api/v1`
+  : '/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 20000,
 });
 
-// Attach fresh Firebase ID Token to every request automatically.
-// Firebase rotates tokens every hour; getIdToken() handles refresh transparently.
+// ─── Request Interceptor — attach fresh Firebase ID token ─────────────────────
 api.interceptors.request.use(async (config) => {
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
+      // getIdToken() transparently handles token refresh (rotates every 1hr)
       const idToken = await currentUser.getIdToken();
       config.headers.Authorization = `Bearer ${idToken}`;
     }
   } catch (_) {
-    // Silent fail — unauthenticated requests will be rejected by backend naturally
+    // Silent — unauthenticated requests are rejected by backend naturally
   }
   return config;
 });
 
-// Global response error handling
+// ─── Response Interceptor — handle errors globally ────────────────────────────
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      // Firebase will sign the user out if their session is truly invalid
-      // We don't force redirect here — let AuthContext/route guards handle it
+  async (err) => {
+    const originalRequest = err.config;
+
+    // On 401: force refresh token and retry once
+    if (err.response?.status === 401 && !originalRequest._retried) {
+      originalRequest._retried = true;
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const freshToken = await currentUser.getIdToken(true); // forceRefresh
+          originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+          return api(originalRequest);
+        }
+      } catch (_) {
+        // Token refresh failed — let the error bubble up
+      }
     }
+
     return Promise.reject(err);
   }
 );

@@ -1,19 +1,25 @@
-// ── AUTH ROUTES ───────────────────────────────────────────────────────────────
 const express = require('express');
 const router = express.Router();
 const {
-  register, login, getMe, updateProfile,
-  updatePassword, addAddress, deleteAddress, resolvePhone
+  register, login, getMe, syncProfile, updateProfile, updatePassword,
+  addAddress, updateAddress, deleteAddress,
 } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { verifyFirebaseToken } = require('../middleware/authMiddleware');
+const { validate, schemas } = require('../middleware/validate');
 
-router.get('/resolve-phone', resolvePhone);
+// Public (no auth needed — handled by Firebase client)
 router.post('/register', register);
 router.post('/login', login);
-router.get('/me', protect, getMe);
-router.put('/profile', protect, updateProfile);
-router.put('/password', protect, updatePassword);
-router.post('/address', protect, addAddress);
-router.delete('/address/:id', protect, deleteAddress);
+
+// Protected — requires valid Firebase ID token
+router.get('/me', verifyFirebaseToken, getMe);
+router.post('/sync-profile', verifyFirebaseToken, validate(schemas.updateProfile), syncProfile);
+router.put('/profile', verifyFirebaseToken, validate(schemas.updateProfile), updateProfile);
+router.put('/password', verifyFirebaseToken, updatePassword);
+
+// Address management (via backend, NOT direct Firestore)
+router.post('/address', verifyFirebaseToken, validate(schemas.addAddress), addAddress);
+router.put('/address/:id', verifyFirebaseToken, validate(schemas.updateAddress), updateAddress);
+router.delete('/address/:id', verifyFirebaseToken, deleteAddress);
 
 module.exports = router;

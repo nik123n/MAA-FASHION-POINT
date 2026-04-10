@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { FiCheckCircle, FiPackage, FiArrowRight } from 'react-icons/fi';
 import { fetchOrder } from '../store/slices/allSlices';
+import { trackPurchase } from '../hooks/useAnalytics';
 
 export function OrderSuccessPage() {
   const { id } = useParams();
@@ -12,6 +13,9 @@ export function OrderSuccessPage() {
   const { order } = useSelector((s) => s.orders);
 
   useEffect(() => { dispatch(fetchOrder(id)); }, [id, dispatch]);
+
+  // Fire purchase analytics event once order data is loaded
+  useEffect(() => { if (order) trackPurchase(order); }, [order]);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">

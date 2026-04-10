@@ -1,0 +1,48 @@
+{
+  "nav": {
+    "home": "Home",
+    "categories": "Categories",
+    "new_arrivals": "New Arrivals",
+    "trending": "Trending",
+    "offers": "Offers"
+  },
+  "profile": {
+    "title": "My Profile",
+    "edit": "Edit Profile",
+    "logout": "Logout",
+    "orders": "My Orders",
+    "wishlist": "My Wishlist",
+    "coupons": "My Coupons",
+    "help": "Help Center",
+    "address": "Manage Addresses",
+    "add_address": "Add New Address",
+    "edit_address": "Edit Address",
+    "delete_address": "Delete Address",
+    "fields": {
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "pincode": "Pincode",
+      "state": "State",
+      "city": "City",
+      "full_address": "Full Address"
+    },
+    "actions": {
+      "save": "Save Changes",
+      "cancel": "Cancel",
+      "update": "Update"
+    }
+  },
+  "footer": {
+    "about": "A boutique space for every woman, blending tradition, comfort, and everyday confidence with a fresh local identity.",
+    "quick_links": "Quick Links",
+    "contact": "Contact",
+    "rights": "All rights reserved.",
+    "links": {
+      "new": "Shop New Arrivals",
+      "trending": "Trending Collection",
+      "all": "All Products",
+      "cart": "Shopping Cart"
+    }
+  }
+}

@@ -2,20 +2,12 @@ const asyncHandler = require('express-async-handler');
 const admin = require('../config/firebaseAdmin');
 const { getFirestore } = require('firebase-admin/firestore');
 const { deleteStoredImage, mapUploadedFiles } = require('../config/cloudinary');
+const redisClient = require('../config/redis');
 
 const CATEGORY_OPTIONS = [
-  '3 Piece',
-  '3 Piece Pair',
-  'Short Top',
-  '2 Piece',
-  'Tunic Top',
-  'Cotton Tunic Top',
-  'Long Top',
-  'Cord Set',
-  'Plazo Pair',
-  'Kurti Plaza Dupata',
-  'Kurti Pent Dupata',
-  'Cotton Straight Pent',
+  '3 Piece', '3 Piece Pair', 'Short Top', '2 Piece', 'Tunic Top',
+  'Cotton Tunic Top', 'Long Top', 'Cord Set', 'Plazo Pair',
+  'Kurti Plaza Dupata', 'Kurti Pent Dupata', 'Cotton Straight Pent',
 ];
 
 const getDb = () => {
@@ -93,6 +85,10 @@ const ensureProductShape = (id, product = {}) => {
     ? reviews.reduce((sum, review) => sum + toNumber(review.rating, 0), 0) / reviews.length
     : toNumber(product.rating, 0);
 
+  const images = Array.isArray(product.images) 
+    ? product.images.map(img => typeof img === 'string' ? { url: img } : img)
+    : [];
+
   return {
     _id: id,
     name: product.name || '',
@@ -103,7 +99,7 @@ const ensureProductShape = (id, product = {}) => {
     category: product.category || '3 Piece',
     subcategory: product.subcategory || '',
     brand: product.brand || 'Saanjh',
-    images: Array.isArray(product.images) ? product.images : [],
+    images,
     sizes,
     colors: Array.isArray(product.colors) ? product.colors : [],
     fabric: product.fabric || '',
@@ -152,19 +148,6 @@ const normalizeProductInput = (input = {}, existing = {}) => {
   return payload;
 };
 
-const listProducts = async () => {
-  const db = getDb();
-  // 🔥 Performance Guard: Prevent loading > 5000 products in memory at once 
-  // (In the future, migrate to proper query pagination over the network)
-  const snapshot = await db.collection('products').limit(5000).get();
-  
-  if (snapshot.size === 5000) {
-    console.warn("⚠️ Memory Guard Activated: Product fetch hit the 5000 document hard limit.");
-  }
-
-  return snapshot.docs.map((doc) => ensureProductShape(doc.id, doc.data()));
-};
-
 const getProductDoc = async (id) => {
   const db = getDb();
   const doc = await db.collection('products').doc(id).get();
@@ -195,7 +178,39 @@ const getProducts = asyncHandler(async (req, res) => {
     search, page = 1, limit = 12, isFeatured, isNewArrival, isTrending,
   } = req.query;
 
-  let products = await listProducts();
+  // Attempt to hit Redis Cache for standard pages (without complex searches)
+  const isCachableRequest = !search && !minPrice && !maxPrice && !size && !rating;
+  const cacheKey = isCachableRequest ? `products:${category || 'all'}:${sort || 'newest'}:${page}:${limit}:${isFeatured}:${isNewArrival}:${isTrending}` : null;
+
+  if (cacheKey && redisClient) {
+    try {
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        return res.json({ success: true, ...cachedData, cached: true });
+      }
+    } catch (_) {
+      // Ignore cache errors
+    }
+  }
+
+  const db = getDb();
+  let query = db.collection('products');
+
+  if (category) {
+    const selected = String(category).split(',').map((item) => item.trim());
+    if (selected.length === 1) {
+      query = query.where('category', '==', selected[0]);
+    } else if (selected.length > 1) {
+      query = query.where('category', 'in', selected);
+    }
+  }
+
+  if (isFeatured === 'true') query = query.where('isFeatured', '==', true);
+  if (isNewArrival === 'true') query = query.where('isNewArrival', '==', true);
+  if (isTrending === 'true') query = query.where('isTrending', '==', true);
+
+  const snapshot = await query.limit(1000).get();
+  let products = snapshot.docs.map((doc) => ensureProductShape(doc.id, doc.data()));
 
   if (search) {
     const q = String(search).toLowerCase();
@@ -204,11 +219,6 @@ const getProducts = asyncHandler(async (req, res) => {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     );
-  }
-
-  if (category) {
-    const selected = String(category).split(',').map((item) => item.trim());
-    products = products.filter((product) => selected.includes(product.category));
   }
 
   if (minPrice || maxPrice) {
@@ -230,9 +240,6 @@ const getProducts = asyncHandler(async (req, res) => {
   if (rating) {
     products = products.filter((product) => product.rating >= Number(rating));
   }
-  if (isFeatured === 'true') products = products.filter((product) => product.isFeatured);
-  if (isNewArrival === 'true') products = products.filter((product) => product.isNewArrival);
-  if (isTrending === 'true') products = products.filter((product) => product.isTrending);
 
   products = sortProducts(products, sort);
 
@@ -242,11 +249,26 @@ const getProducts = asyncHandler(async (req, res) => {
   const start = (pageNumber - 1) * limitNumber;
   const paginatedProducts = products.slice(start, start + limitNumber);
 
-  res.json({
-    success: true,
+  const responsePayload = {
     products: paginatedProducts,
-    pagination: { page: pageNumber, limit: limitNumber, total, pages: Math.ceil(total / limitNumber) },
-  });
+    pagination: { page: pageNumber, limit: limitNumber, total, pages: Math.ceil(total / limitNumber) }
+  };
+
+  if (cacheKey && redisClient) {
+    try {
+      await redisClient.set(cacheKey, JSON.stringify(responsePayload), { ex: 300 }); // Cache 5 mins
+    } catch (_) {}
+  }
+
+console.log('Products response:', paginatedProducts.map(p => ({id: p._id, hasImages: !!p.images?.length})));
+
+// Log empty images products
+const emptyImageProducts = paginatedProducts.filter(p => !p.images?.length);
+if (emptyImageProducts.length > 0) {
+  console.log('⚠️ Products without images:', emptyImageProducts.map(p => p._id));
+}
+
+res.json({ success: true, ...responsePayload });
 });
 
 const getProduct = asyncHandler(async (req, res) => {
@@ -267,8 +289,8 @@ const getProduct = asyncHandler(async (req, res) => {
 });
 
 const getRecommendations = asyncHandler(async (req, res) => {
-  const products = await listProducts();
-  const product = products.find((item) => item._id === req.params.id);
+  const db = getDb();
+  const product = await getProductDoc(req.params.id);
 
   if (!product) {
     res.status(404);
@@ -278,7 +300,13 @@ const getRecommendations = asyncHandler(async (req, res) => {
   const priceMin = (product.discountedPrice || product.price) * 0.5;
   const priceMax = (product.discountedPrice || product.price) * 2;
 
-  const recommendations = products
+  let query = db.collection('products');
+  if (product.category) query = query.where('category', '==', product.category);
+
+  const snapshot = await query.limit(200).get();
+
+  const recommendations = snapshot.docs
+    .map(doc => ensureProductShape(doc.id, doc.data()))
     .filter((item) => item._id !== product._id)
     .filter((item) => {
       const activePrice = item.discountedPrice || item.price;
@@ -297,24 +325,24 @@ const autocomplete = asyncHandler(async (req, res) => {
   const { q } = req.query;
   if (!q || String(q).length < 2) return res.json({ success: true, suggestions: [] });
 
-  const query = String(q).toLowerCase();
-  const products = (await listProducts())
+  const queryText = String(q).toLowerCase();
+  const db = getDb();
+  const snapshot = await db.collection('products').limit(300).get(); // constrained set to prevent mem spike
+  
+  const products = snapshot.docs
+    .map(doc => ({ _id: doc.id, ...doc.data() }))
     .filter((product) =>
       [product.name, product.description, ...(product.tags || [])]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query))
+        .some((value) => String(value).toLowerCase().includes(queryText))
     )
     .slice(0, 8)
     .map(({ _id, name, category, price, discountedPrice, images }) => ({
-      _id,
-      name,
-      category,
-      price,
-      discountedPrice,
-      images,
+      _id, name, category, price, discountedPrice, 
+      images: Array.isArray(images) ? images.map(img => typeof img === 'string' ? { url: img } : img) : [],
     }));
 
-  const categories = CATEGORY_OPTIONS.filter((item) => item.toLowerCase().includes(query));
+  const categories = CATEGORY_OPTIONS.filter((item) => item.toLowerCase().includes(queryText));
   res.json({ success: true, products, categories });
 });
 
@@ -421,22 +449,40 @@ const deleteProduct = asyncHandler(async (req, res) => {
     throw new Error('Product not found');
   }
 
-  await Promise.all((product.images || []).map((img) => deleteStoredImage(img)));
+  // Make cloud deletions non-blocking
+  Promise.all((product.images || []).map((img) => deleteStoredImage(img).catch(console.error)));
+  
   await db.collection('products').doc(req.params.id).delete();
   res.json({ success: true, message: 'Product deleted' });
 });
 
 const getHomeProducts = asyncHandler(async (req, res) => {
-  const products = await listProducts();
+  if (redisClient) {
+    try {
+      const cachedHome = await redisClient.get('home_products');
+      if (cachedHome) {
+        return res.json({ success: true, ...cachedHome, cached: true });
+      }
+    } catch (_) {}
+  }
 
-  const featured = products.filter((product) => product.isFeatured).slice(0, 8);
-  const newArrivals = [...products]
-    .filter((product) => product.isNewArrival)
-    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
-    .slice(0, 8);
+  const db = getDb();
+  const snapshot = await db.collection('products').limit(1000).get();
+  const products = snapshot.docs.map((doc) => ensureProductShape(doc.id, doc.data()));
+
+  const featured = sortProducts(
+    products.filter((product) => product.isFeatured),
+    'newest'
+  ).slice(0, 8);
+
+  const newArrivals = sortProducts(
+    products.filter((product) => product.isNewArrival),
+    'newest'
+  ).slice(0, 8);
+
   const trending = [...products]
     .filter((product) => product.isTrending)
-    .sort((a, b) => b.sold - a.sold)
+    .sort((a, b) => b.sold - a.sold || String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
     .slice(0, 8);
 
   const categoryMap = new Map();
@@ -454,12 +500,22 @@ const getHomeProducts = asyncHandler(async (req, res) => {
     categoryMap.set(product.category, current);
   }
 
-  res.json({
-    success: true,
+  const responsePayload = {
     featured,
     newArrivals,
     trending,
     categories: [...categoryMap.values()],
+  };
+
+  if (redisClient) {
+    try {
+      await redisClient.set('home_products', JSON.stringify(responsePayload), { ex: 300 });
+    } catch (_) {}
+  }
+
+  res.json({
+    success: true,
+    ...responsePayload
   });
 });
 

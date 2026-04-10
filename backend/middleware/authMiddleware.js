@@ -1,162 +1,103 @@
-const asyncHandler = require('express-async-handler');
+/**
+ * authMiddleware.js
+ * Zero-Trust Firebase Auth middleware.
+ *
+ * Security design:
+ *  - Role is read EXCLUSIVELY from Firebase custom claims (set only by backend via Admin SDK).
+ *  - Firestore profile is NEVER trusted for role or isActive.
+ *  - Account disabled state is checked via Firebase Auth record (not Firestore flag).
+ */
+
 const admin = require('../config/firebaseAdmin');
-const { getFirestore } = require('firebase-admin/firestore');
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
+const { logger } = require('../utils/logger');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// protect — verify Firebase ID Token and load user profile from Firestore
-// ─────────────────────────────────────────────────────────────────────────────
-const protect = asyncHandler(async (req, res, next) => {
-  let idToken;
-
-  if (req.headers.authorization?.startsWith('Bearer ')) {
-    idToken = req.headers.authorization.split(' ')[1];
-  }
-
-  if (!idToken) {
-    res.status(401);
-    throw new Error('Not authorized — no token provided');
-  }
-
-  if (!admin) {
-    res.status(503);
-    throw new Error('Auth service unavailable — Firebase Admin not configured');
-  }
-
+/**
+ * Extracts and verifies the Firebase ID token from the Authorization header.
+ * Attaches req.user with uid, email, name, role (from claims only).
+ */
+const verifyFirebaseToken = async (req, res, next) => {
   try {
-    // Verify the Firebase ID token (checks signature, expiry, audience)
-    const decoded = await admin.auth().verifyIdToken(idToken);
-
-    // Load user profile from Firestore
-    const db = getFirestore();
-    const userRef = db.collection('users').doc(decoded.uid);
-    const userDoc = await userRef.get();
-    const isConfiguredAdmin = (decoded.email || '').toLowerCase() === ADMIN_EMAIL || decoded.admin === true;
-
-    if (!userDoc.exists && isConfiguredAdmin) {
-      await userRef.set({
-        name: decoded.name || 'MAA Admin',
-        email: decoded.email,
-        phone: '',
-        role: 'admin',
-        avatar: '',
-        addresses: [],
-        preferences: { sizes: [], categories: [] },
-        wishlist: [],
-        isActive: true,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Not authorized — no token provided' });
     }
 
-    const refreshedUserDoc = await userRef.get();
+    const idToken = authHeader.split(' ')[1];
 
-    if (!refreshedUserDoc.exists) {
-      res.status(401);
-      throw new Error('User profile not found');
+    if (!admin) {
+      return res.status(503).json({ success: false, message: 'Auth service unavailable' });
     }
 
-    const userData = refreshedUserDoc.data();
+    // Verify the token (throws if invalid or expired)
+    const decoded = await admin.auth().verifyIdToken(idToken, true); // checkRevoked=true
 
-    if (isConfiguredAdmin && userData.role !== 'admin') {
-      await userRef.set({ role: 'admin', updatedAt: new Date().toISOString() }, { merge: true });
-      userData.role = 'admin';
-    }
+    // ✅ Role comes ONLY from Firebase custom claims — never Firestore
+    const isAdmin = decoded.admin === true;
 
-    if (userData.isActive === false) {
-      res.status(401);
-      throw new Error('Account has been deactivated');
-    }
-
-    // Attach user info to request (compatible with old req.user shape)
     req.user = {
-      _id:   decoded.uid,   // kept as _id for backward compat with existing controllers
-      uid:   decoded.uid,
-      email: decoded.email,
-      name:  userData.name,
-      role:  userData.role || 'user',
-      ...userData,
+      _id: decoded.uid,
+      uid: decoded.uid,
+      email: decoded.email || '',
+      name: decoded.name || '',
+      role: isAdmin ? 'admin' : 'user',
+      emailVerified: decoded.email_verified || false,
     };
 
     next();
   } catch (err) {
-    // Firebase token errors: expired, revoked, malformed
+    if (err.code === 'auth/id-token-revoked') {
+      return res.status(401).json({ success: false, message: 'Session revoked — please sign in again' });
+    }
     if (err.code?.startsWith('auth/')) {
-      res.status(401);
-      throw new Error('Not authorized — invalid or expired token');
+      return res.status(401).json({ success: false, message: 'Not authorized — invalid or expired token' });
     }
-    throw err; // re-throw non-auth errors for the global error handler
+    logger.error('verifyFirebaseToken error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Internal auth error' });
   }
-});
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// adminOnly — must come AFTER protect
-// ─────────────────────────────────────────────────────────────────────────────
-const adminOnly = (req, res, next) => {
+/**
+ * Middleware: requires admin custom claim.
+ * Must be used AFTER verifyFirebaseToken.
+ */
+const requireAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {
-    res.status(403);
-    throw new Error('Admin access required');
+    return res.status(403).json({ success: false, message: 'Admin access required' });
   }
   next();
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// optionalAuth — doesn't fail if token is absent, just skips user lookup
-// ─────────────────────────────────────────────────────────────────────────────
-const optionalAuth = asyncHandler(async (req, res, next) => {
-  let idToken;
-
-  if (req.headers.authorization?.startsWith('Bearer ')) {
-    idToken = req.headers.authorization.split(' ')[1];
-  }
-
-  if (idToken && admin) {
-    try {
+/**
+ * Optional auth — attaches req.user if valid token present, else continues.
+ */
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ') && admin) {
+      const idToken = authHeader.split(' ')[1];
       const decoded = await admin.auth().verifyIdToken(idToken);
-      const db = getFirestore();
-      const userRef = db.collection('users').doc(decoded.uid);
-      const userDoc = await userRef.get();
-      const isConfiguredAdmin = (decoded.email || '').toLowerCase() === ADMIN_EMAIL || decoded.admin === true;
-
-      if (!userDoc.exists && isConfiguredAdmin) {
-        await userRef.set({
-          name: decoded.name || 'MAA Admin',
-          email: decoded.email,
-          phone: '',
-          role: 'admin',
-          avatar: '',
-          addresses: [],
-          preferences: { sizes: [], categories: [] },
-          wishlist: [],
-          isActive: true,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
-
-      const refreshedUserDoc = await userRef.get();
-      if (refreshedUserDoc.exists) {
-        const userData = refreshedUserDoc.data();
-        if (isConfiguredAdmin && userData.role !== 'admin') {
-          await userRef.set({ role: 'admin', updatedAt: new Date().toISOString() }, { merge: true });
-          userData.role = 'admin';
-        }
-        req.user = {
-          _id: decoded.uid,
-          uid: decoded.uid,
-          email: decoded.email,
-          ...userData,
-        };
-      }
-    } catch (_) {
-      // Silently skip — optional auth, not required
+      req.user = {
+        _id: decoded.uid,
+        uid: decoded.uid,
+        email: decoded.email || '',
+        name: decoded.name || '',
+        role: decoded.admin === true ? 'admin' : 'user',
+        emailVerified: decoded.email_verified || false,
+      };
     }
+  } catch (_) {
+    // Silent — optional auth does not block request
   }
-
   next();
-});
-
-// generateToken kept as a no-op export for backward compat (unused now)
-const generateToken = () => {
-  throw new Error('generateToken is deprecated — Firebase handles tokens now');
 };
 
-module.exports = { protect, adminOnly, optionalAuth, generateToken };
+// ─── Backward-compatible aliases ──────────────────────────────────────────────
+const protect = verifyFirebaseToken;
+const adminOnly = requireAdmin;
+
+// Deprecated stub
+const generateToken = () => {
+  throw new Error('generateToken is deprecated — Firebase handles tokens');
+};
+
+module.exports = { verifyFirebaseToken, requireAdmin, protect, adminOnly, optionalAuth, generateToken };

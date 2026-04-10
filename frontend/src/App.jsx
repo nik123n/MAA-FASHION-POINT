@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { fetchCart } from './store/slices/allSlices';
-
+import * as Sentry from '@sentry/react';
 
 // Layout
 import Navbar from './components/common/BrandedNavbar';
@@ -11,28 +11,40 @@ import Footer from './components/common/BrandedFooter';
 import MobileBottomNav from './components/common/MobileBottomNav';
 import ScrollToTop from './components/common/ScrollToTop';
 
-// Pages
+// Pages - Homepage is critical, load statically
 import HomePage from './pages/BrandedHomePage';
-import ProductsPage from './pages/ProductsPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import CartPage from './pages/CartPage';
-import WishlistPage from './pages/WishlistPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderSuccessPage from './pages/OrderSuccessPage';
-import OrdersPage from './pages/OrdersPage';
-import OrderDetailPage from './pages/OrderDetailPage';
-import ProfilePage from './pages/ProfilePage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
 
-// Admin Pages
-import AdminLayout from './components/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminCoupons from './pages/admin/AdminCoupons';
-import AdminBilling from './pages/admin/AdminBilling';
+// Pages - Lazy load the rest to reduce bundle size
+const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const WishlistPage = lazy(() => import('./pages/WishlistPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPage'));
+const OrdersPage = lazy(() => import('./pages/OrdersPage'));
+const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+
+// Admin Pages - Lazy load all
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminCoupons = lazy(() => import('./pages/admin/AdminCoupons'));
+const AdminBilling = lazy(() => import('./pages/admin/AdminBilling'));
+
+// ── Sentry Initialization ─────────────────────────────────────────────────────
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN || '',
+  integrations: [
+    Sentry.browserTracingIntegration(),
+  ],
+  tracesSampleRate: import.meta.env.PROD ? 0.2 : 0.0, // Only sample in production
+  enabled: !!import.meta.env.VITE_SENTRY_DSN, // Disabled if no DSN
+});
 
 // ── Full-screen loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
@@ -80,60 +92,62 @@ function AppInner() {
   return (
     <>
       <ScrollToTop />
-      <Routes>
-        {/* ── Admin Routes ─────────────────────────────────── */}
-        <Route
-          path="/admin/*"
-          element={
-            <AdminRoute>
-              <AdminLayout>
-                <Routes>
-                  <Route path="/" element={<AdminDashboard />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="coupons" element={<AdminCoupons />} />
-                  <Route path="billing" element={<AdminBilling />} />
-                </Routes>
-              </AdminLayout>
-            </AdminRoute>
-          }
-        />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* ── Admin Routes ─────────────────────────────────── */}
+          <Route
+            path="/admin/*"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <Routes>
+                    <Route path="/" element={<AdminDashboard />} />
+                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="coupons" element={<AdminCoupons />} />
+                    <Route path="billing" element={<AdminBilling />} />
+                  </Routes>
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
 
-        {/* ── Public Routes with Navbar ────────────────────── */}
-        <Route
-          path="/*"
-          element={
-            <>
-              <Navbar />
-              <main className="min-h-screen">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/products" element={<ProductsPage />} />
-                  <Route path="/products/:id" element={<ProductDetailPage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/wishlist" element={<WishlistPage />} />
+          {/* ── Public Routes with Navbar ────────────────────── */}
+          <Route
+            path="/*"
+            element={
+              <>
+                <Navbar />
+                <main className="min-h-screen">
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/products/:id" element={<ProductDetailPage />} />
+                    <Route path="/cart" element={<CartPage />} />
+                    <Route path="/wishlist" element={<WishlistPage />} />
 
-                  {/* Auth (guests only) */}
-                  <Route path="/auth/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-                  <Route path="/auth/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+                    {/* Auth (guests only) */}
+                    <Route path="/auth/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+                    <Route path="/auth/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
-                  {/* Protected */}
-                  <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                  <Route path="/order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
-                  <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-                  <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                    {/* Protected */}
+                    <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                    <Route path="/order-success/:id" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
+                    <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                    <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-              <Footer />
-              <MobileBottomNav />
-            </>
-          }
-        />
-      </Routes>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </main>
+                <Footer />
+                <MobileBottomNav />
+              </>
+            }
+          />
+        </Routes>
+      </Suspense>
     </>
   );
 }

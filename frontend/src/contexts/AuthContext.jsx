@@ -1,23 +1,33 @@
+/**
+ * AuthContext.jsx
+ *
+ * CRITICAL SECURITY FIXES:
+ * 1. REMOVED ADMIN_EMAIL check — was a client-side role spoofing vulnerability
+ * 2. Role comes ONLY from Firebase ID token custom claims (set by backend)
+ * 3. Address management now calls backend APIs (not direct Firestore)
+ * 4. Profile sync calls backend after Firebase signup
+ * 5. Token forced-refresh on login to get latest custom claims
+ */
+
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import {
   signUpWithEmail,
   signInWithEmail,
+  signInWithGoogle,
   signOutUser,
-  getUserProfile,
-  updateUserProfile,
   changeUserPassword,
-  addUserAddress,
-  removeUserAddress,
   onAuthChange,
-  requestPhoneOTP,
-  verifyPhoneOTP,
+  getUserRole,
 } from '../firebase/auth';
 import { setUser, clearUser } from '../store/slices/authSlice';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
+
+// ⚠️ REMOVED: ADMIN_EMAIL constant — was a critical security vulnerability
+// Role is now determined ONLY by Firebase custom claims set by the backend.
 
 export const AuthProvider = ({ children }) => {
   const dispatch = useDispatch();
@@ -29,25 +39,53 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthChange(async (fbUser) => {
       if (fbUser) {
         try {
-          const profile = await getUserProfile(fbUser.uid);
-          const fallbackRole = (fbUser.email || '').toLowerCase() === ADMIN_EMAIL ? 'admin' : 'user';
-          const userData = profile ?? {
-            uid: fbUser.uid,
-            name: fbUser.displayName || '',
-            email: fbUser.email,
-            role: fallbackRole,
-            avatar: '',
-            addresses: [],
-            preferences: { sizes: [], categories: [] },
-          };
-          if ((fbUser.email || '').toLowerCase() === ADMIN_EMAIL) {
-            userData.role = 'admin';
+          // ✅ Get role from Firebase custom claims — NOT from email comparison
+          // forceRefresh=true ensures we have the latest claims after role assignment
+          const role = await getUserRole(true);
+
+          // Fetch Firestore profile from backend (not directly from Firestore)
+          let profile = {};
+          try {
+            const { data } = await api.get('/auth/me');
+            profile = data.user || {};
+          } catch (err) {
+            // Profile not yet created — will be created on first successful backend call
+            console.warn('Profile fetch failed (may be first login):', err.message);
           }
+
+          const userData = {
+            uid: fbUser.uid,
+            _id: fbUser.uid,
+            name: profile.name || fbUser.displayName || '',
+            email: profile.email || fbUser.email || '',
+            phone: profile.phone || '',
+            avatar: profile.avatar || fbUser.photoURL || '',
+            addresses: profile.addresses || [],
+            wishlist: profile.wishlist || [],
+            preferences: profile.preferences || { sizes: [], categories: [] },
+            // ✅ Role from custom claims only — never from email or Firestore
+            role,
+          };
+
           setFirebaseUser(fbUser);
           setUserState(userData);
           dispatch(setUser(userData));
         } catch (err) {
           console.error('Failed to load user profile:', err);
+          // Minimal fallback — role defaults to 'user' (safe default)
+          const fallbackData = {
+            uid: fbUser.uid,
+            _id: fbUser.uid,
+            name: fbUser.displayName || '',
+            email: fbUser.email || '',
+            role: 'user', // ✅ Safe default — never 'admin' without verified claims
+            avatar: fbUser.photoURL || '',
+            addresses: [],
+            preferences: { sizes: [], categories: [] },
+          };
+          setFirebaseUser(fbUser);
+          setUserState(fallbackData);
+          dispatch(setUser(fallbackData));
         }
       } else {
         setFirebaseUser(null);
@@ -60,64 +98,108 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, [dispatch]);
 
+  // ─── Sign Up ──────────────────────────────────────────────────────────────
   const signUp = useCallback(async (formData) => {
     try {
-      await signUpWithEmail(formData);
+      const fbUser = await signUpWithEmail(formData);
+
+      // Sync profile to backend (creates Firestore doc without role field)
+      try {
+        await api.post('/auth/sync-profile', {
+          name: formData.name,
+          phone: formData.phone || '',
+        });
+      } catch (syncErr) {
+        // Non-fatal — AuthContext state change will handle profile load
+        console.warn('Profile sync failed (non-fatal):', syncErr.message);
+      }
+
       toast.success('Welcome to MAA Fashion Point!');
+      return fbUser;
     } catch (err) {
-      console.error('Sign up failed:', err);
       toast.error(getFirebaseErrorMessage(err.code));
       throw err;
     }
   }, []);
 
+  // ─── Sign In ──────────────────────────────────────────────────────────────
   const signIn = useCallback(async (formData) => {
     try {
       await signInWithEmail(formData);
+      // onAuthChange listener above will handle state update with fresh claims
     } catch (err) {
       toast.error(getFirebaseErrorMessage(err.code));
       throw err;
     }
   }, []);
 
+  // ─── Google Sign In ───────────────────────────────────────────────────────
+  const signInGoogle = useCallback(async () => {
+    try {
+      await signInWithGoogle();
+      // onAuthChange will sync profile and get role from claims
+      toast.success('Signed in with Google!');
+    } catch (err) {
+      toast.error(getFirebaseErrorMessage(err.code) || 'Failed to sign in with Google');
+      throw err;
+    }
+  }, []);
 
+  // ─── Sign Out ─────────────────────────────────────────────────────────────
   const signOut = useCallback(async () => {
     try {
       await signOutUser();
       toast.success('Logged out successfully');
-    } catch (err) {
+    } catch {
       toast.error('Failed to log out. Please try again.');
     }
   }, []);
 
+  // ─── Update Profile (via backend API) ────────────────────────────────────
   const updateProfile = useCallback(async (updates) => {
     if (!firebaseUser) return;
     try {
-      await updateUserProfile(firebaseUser.uid, updates);
-      const updated = { ...user, ...updates };
+      const { data } = await api.put('/auth/profile', updates);
+      const updated = { ...user, ...data.user, role: user.role };
       setUserState(updated);
       dispatch(setUser(updated));
       toast.success('Profile updated!');
     } catch (err) {
-      toast.error('Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
       throw err;
     }
   }, [firebaseUser, user, dispatch]);
 
+  // ─── Change Password ──────────────────────────────────────────────────────
   const changePassword = useCallback(async (currentPassword, newPassword) => {
     await changeUserPassword(currentPassword, newPassword);
   }, []);
 
+  // ─── Address Management (via backend API — NOT direct Firestore) ──────────
   const addAddress = useCallback(async (address) => {
     if (!firebaseUser || !user) return;
     try {
-      const addresses = await addUserAddress(firebaseUser.uid, address, user.addresses || []);
-      const updated = { ...user, addresses };
+      const { data } = await api.post('/auth/address', address);
+      const updated = { ...user, addresses: data.addresses };
       setUserState(updated);
       dispatch(setUser(updated));
       toast.success('Address added!');
     } catch (err) {
-      toast.error('Failed to add address');
+      toast.error(err.response?.data?.message || 'Failed to add address');
+      throw err;
+    }
+  }, [firebaseUser, user, dispatch]);
+
+  const updateAddress = useCallback(async (addressId, updates) => {
+    if (!firebaseUser || !user) return;
+    try {
+      const { data } = await api.put(`/auth/address/${addressId}`, updates);
+      const updated = { ...user, addresses: data.addresses };
+      setUserState(updated);
+      dispatch(setUser(updated));
+      toast.success('Address updated!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update address');
       throw err;
     }
   }, [firebaseUser, user, dispatch]);
@@ -125,13 +207,13 @@ export const AuthProvider = ({ children }) => {
   const removeAddress = useCallback(async (addressId) => {
     if (!firebaseUser || !user) return;
     try {
-      const addresses = await removeUserAddress(firebaseUser.uid, addressId, user.addresses || []);
-      const updated = { ...user, addresses };
+      const { data } = await api.delete(`/auth/address/${addressId}`);
+      const updated = { ...user, addresses: data.addresses };
       setUserState(updated);
       dispatch(setUser(updated));
       toast.success('Address removed');
     } catch (err) {
-      toast.error('Failed to remove address');
+      toast.error(err.response?.data?.message || 'Failed to remove address');
       throw err;
     }
   }, [firebaseUser, user, dispatch]);
@@ -143,12 +225,12 @@ export const AuthProvider = ({ children }) => {
       loading,
       signUp,
       signIn,
+      signInGoogle,
       signOut,
-
-
       updateProfile,
       changePassword,
       addAddress,
+      updateAddress,
       removeAddress,
     }}>
       {children}
@@ -167,22 +249,18 @@ function getFirebaseErrorMessage(code) {
     'auth/email-already-in-use': 'This email is already registered. Please sign in.',
     'auth/invalid-email': 'Invalid email address format.',
     'auth/weak-password': 'Password must be at least 6 characters.',
-    'auth/operation-not-allowed': 'Email/password sign-in is not enabled in Firebase Authentication.',
-    'auth/configuration-not-found': 'Open Firebase Console > Authentication > Get started, then enable Email/Password.',
-    'auth/unauthorized-domain': 'This website domain is not authorized in Firebase Authentication.',
+    'auth/operation-not-allowed': 'Email/password sign-in is not enabled in Firebase.',
+    'auth/configuration-not-found': 'Enable Email/Password in Firebase Console > Authentication.',
+    'auth/unauthorized-domain': 'Domain not authorized in Firebase Authentication.',
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password. Please try again.',
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/too-many-requests': 'Too many failed attempts. Please wait and try again.',
     'auth/network-request-failed': 'Network error. Please check your connection.',
-    'auth/requires-recent-login': 'Please log out and sign in again to change your password.',
+    'auth/requires-recent-login': 'Please sign out and sign in again to change your password.',
     'auth/user-disabled': 'This account has been disabled.',
     'auth/popup-closed-by-user': 'Sign-in was cancelled.',
-    'permission-denied': 'Firestore blocked profile creation. Update your Firestore rules for signed-in users.',
-    'failed-precondition': 'Firestore database is not ready yet. Create the Firestore database in Firebase Console.',
-    'unavailable': 'Firestore is temporarily unavailable. Please try again.',
-    'auth/invalid-verification-code': 'Invalid OTP code. Please try again.',
-    'auth/invalid-phone-number': 'Invalid phone number format. Include country code (e.g. +91).',
+    'auth/id-token-revoked': 'Session expired. Please sign in again.',
   };
   return map[code] || 'Something went wrong. Please try again.';
 }

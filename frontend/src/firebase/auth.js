@@ -1,171 +1,113 @@
+/**
+ * firebase/auth.js
+ *
+ * CRITICAL SECURITY FIXES:
+ * 1. REMOVED all client-side role assignment (role = email === ADMIN_EMAIL ? 'admin' : 'user')
+ * 2. REMOVED writing `role` and `isActive` to Firestore from client
+ * 3. Signup now calls backend /api/v1/auth/sync-profile to create Firestore doc
+ * 4. Role comes from Firebase custom claims ONLY (via getIdTokenResult)
+ * 5. REMOVED resolvePhone dependency
+ *
+ * Rule: The client NEVER decides what role a user has.
+ *       The backend sets custom claims via Firebase Admin SDK.
+ */
+
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  deleteUser,
   signOut,
   updateProfile as fbUpdateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
   onAuthStateChanged,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
-import {
-  doc, setDoc, getDoc, updateDoc, serverTimestamp,
-} from 'firebase/firestore';
-import { auth, db } from './config';
+import { auth } from './config';
 
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'maafashtionpoint@gmail.com').trim().toLowerCase();
+// ─── Email/Password Auth ───────────────────────────────────────────────────────
 
+/**
+ * Sign up with email + password.
+ * Creates Firebase Auth user, then syncs profile to backend (no role written).
+ */
 export const signUpWithEmail = async ({ name, email, password, phone = '' }) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  const normalizedEmail = email.toLowerCase().trim();
-  const role = normalizedEmail === ADMIN_EMAIL ? 'admin' : 'user';
 
   try {
+    // Update Firebase Auth display name
     await fbUpdateProfile(cred.user, { displayName: name });
-
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      name,
-      email: normalizedEmail,
-      phone,
-      role,
-      avatar: '',
-      addresses: [],
-      preferences: { sizes: [], categories: [] },
-      isActive: true,
-      createdAt: serverTimestamp(),
-      lastLogin: serverTimestamp(),
-    });
-
+    // Profile sync is handled in AuthContext after auth state changes
     return cred.user;
   } catch (err) {
-    try {
-      await deleteUser(cred.user);
-    } catch (_) {}
-
-    throw err;
+    // If profile update fails, still return the created user (non-fatal)
+    console.warn('Profile update failed (non-fatal):', err.message);
+    return cred.user;
   }
 };
 
+/**
+ * Sign in with email + password.
+ */
 export const signInWithEmail = async ({ email, password }) => {
   const cred = await signInWithEmailAndPassword(auth, email, password);
-  const normalizedEmail = cred.user.email?.toLowerCase().trim();
-  const role = normalizedEmail === ADMIN_EMAIL ? 'admin' : 'user';
-
-  try {
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      name: cred.user.displayName || '',
-      email: normalizedEmail || '',
-      phone: '',
-      role,
-      avatar: '',
-      addresses: [],
-      preferences: { sizes: [], categories: [] },
-      isActive: true,
-      lastLogin: serverTimestamp(),
-    }, { merge: true });
-  } catch (_) { }
-
   return cred.user;
 };
 
+/**
+ * Sign in with Google.
+ */
+export const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  const cred = await signInWithPopup(auth, provider);
+  return cred.user;
+};
+
+/**
+ * Sign out the current user.
+ */
 export const signOutUser = () => signOut(auth);
 
-export const getUserProfile = async (uid) => {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? { uid, ...snap.data() } : null;
-};
+/**
+ * Get role from Firebase ID token custom claims.
+ * This is the AUTHORITATIVE source of role — never Firestore.
+ *
+ * @param {boolean} forceRefresh - Force token refresh to get latest claims
+ */
+export const getUserRole = async (forceRefresh = false) => {
+  const user = auth.currentUser;
+  if (!user) return 'user';
 
-export const updateUserProfile = async (uid, { name, phone, preferences } = {}) => {
-  const updates = {};
-  if (name !== undefined) updates.name = name;
-  if (phone !== undefined) updates.phone = phone;
-  if (preferences !== undefined) updates.preferences = preferences;
-
-  if (name && auth.currentUser) {
-    await fbUpdateProfile(auth.currentUser, { displayName: name });
+  try {
+    const tokenResult = await user.getIdTokenResult(forceRefresh);
+    return tokenResult.claims.admin === true ? 'admin' : 'user';
+  } catch (_) {
+    return 'user';
   }
-
-  await updateDoc(doc(db, 'users', uid), updates);
 };
 
-export const addUserAddress = async (uid, address, currentAddresses = []) => {
-  let addresses = currentAddresses.map((a) =>
-    address.isDefault ? { ...a, isDefault: false } : a
-  );
-  addresses = [...addresses, { ...address, id: `addr_${Date.now()}` }];
-  await updateDoc(doc(db, 'users', uid), { addresses });
-  return addresses;
+/**
+ * Get the current user's Firebase ID token for API calls.
+ */
+export const getIdToken = async () => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return user.getIdToken();
 };
 
-export const removeUserAddress = async (uid, addressId, currentAddresses = []) => {
-  const addresses = currentAddresses.filter((a) => a.id !== addressId);
-  await updateDoc(doc(db, 'users', uid), { addresses });
-  return addresses;
-};
-
+/**
+ * Change password — requires re-authentication.
+ */
 export const changeUserPassword = async (currentPassword, newPassword) => {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
-
   const credential = EmailAuthProvider.credential(user.email, currentPassword);
   await reauthenticateWithCredential(user, credential);
   await updatePassword(user, newPassword);
 };
 
+/**
+ * Subscribe to auth state changes.
+ */
 export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
-
-export const clearRecaptchaVerifier = () => {
-  if (window.recaptchaVerifier) {
-    try {
-      window.recaptchaVerifier.clear();
-    } catch (e) {}
-    window.recaptchaVerifier = null;
-  }
-};
-
-export const initRecaptchaProvider = (containerId) => {
-  clearRecaptchaVerifier();
-  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-    size: 'invisible',
-    callback: () => {
-      // recaptcha solved
-    }
-  });
-  return window.recaptchaVerifier;
-};
-
-export const requestPhoneOTP = async (phone, appVerifier) => {
-  return await signInWithPhoneNumber(auth, phone, appVerifier);
-};
-
-export const verifyPhoneOTP = async (confirmationResult, otp) => {
-  const cred = await confirmationResult.confirm(otp);
-  
-  const docRef = doc(db, 'users', cred.user.uid);
-  const snap = await getDoc(docRef);
-  
-  if (!snap.exists()) {
-    await setDoc(docRef, {
-      name: '',
-      email: '',
-      phone: cred.user.phoneNumber || '',
-      role: 'user',
-      avatar: '',
-      addresses: [],
-      preferences: { sizes: [], categories: [] },
-      isActive: true,
-      createdAt: serverTimestamp(),
-      lastLogin: serverTimestamp(),
-    });
-  } else {
-    await updateDoc(docRef, {
-      lastLogin: serverTimestamp(),
-      phone: cred.user.phoneNumber || snap.data().phone || '',
-    });
-  }
-  
-  return cred.user;
-};

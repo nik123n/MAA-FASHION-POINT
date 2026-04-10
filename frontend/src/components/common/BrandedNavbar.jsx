@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSearch, FiShoppingBag, FiHeart, FiUser, FiMenu, FiX,
-  FiChevronDown, FiLogOut, FiPackage, FiSettings,
+  FiChevronDown, FiLogOut, FiPackage, FiSettings, FiGlobe
 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import api from '../../utils/api';
 import BrandLogo from './BrandLogoNew';
 
@@ -18,19 +21,21 @@ export default function BrandedNavbar() {
   const location = useLocation();
   const { user: authUser, signOut: firebaseSignOut } = useAuth();
   const { user } = useSelector((s) => s.auth);
+  const { t } = useTranslation();
   const { cart } = useSelector((s) => s.cart);
   const { items: wishlist } = useSelector((s) => s.wishlist);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
+  const debouncedSearchQ = useDebounce(searchQ, 300);
   const [suggestions, setSuggestions] = useState({ products: [], categories: [] });
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const searchRef = useRef(null);
-  const debounceRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const mobileToggleRef = useRef(null);
 
@@ -82,20 +87,23 @@ export default function BrandedNavbar() {
     };
   }, [mobileOpen, isSearchExpanded]);
 
-  const handleSearch = useCallback((q) => {
-    setSearchQ(q);
-    clearTimeout(debounceRef.current);
-    if (q.length < 2) {
+  // Fire API call whenever debouncedSearchQ changes (powered by useDebounce hook)
+  useEffect(() => {
+    if (debouncedSearchQ.length < 2) {
       setSuggestions({ products: [], categories: [] });
       return;
     }
-
-    debounceRef.current = setTimeout(async () => {
+    const fetchSuggestions = async () => {
       try {
-        const { data } = await api.get('/products/search/autocomplete', { params: { q } });
+        const { data } = await api.get('/products/search/autocomplete', { params: { q: debouncedSearchQ } });
         setSuggestions(data);
       } catch (_) {}
-    }, 300);
+    };
+    fetchSuggestions();
+  }, [debouncedSearchQ]);
+
+  const handleSearch = useCallback((q) => {
+    setSearchQ(q);
   }, []);
 
   const handleSearchSubmit = (e) => {
@@ -113,6 +121,19 @@ export default function BrandedNavbar() {
     await firebaseSignOut();
     navigate('/');
   };
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setLangMenuOpen(false);
+  };
+
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
+    { code: 'gu', name: 'ગુજરાતી', flag: '🇮🇳' },
+  ];
+
+  const currentLang = languages.find(l => l.code === (i18n.language || 'en')) || languages[0];
 
   return (
     <>
@@ -143,13 +164,13 @@ export default function BrandedNavbar() {
             {/* Center: Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-8">
               <Link to="/" className="text-[15px] font-medium text-gray-700 hover:text-brand-700 transition-colors relative group">
-                Home
+                {t('nav.home')}
                 <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 bg-brand-700 transition-all group-hover:w-full"></span>
               </Link>
               
               <div className="relative group h-full flex items-center">
                 <button className="flex items-center gap-1 text-[15px] font-medium text-gray-700 hover:text-brand-700 transition-colors py-8">
-                  Categories <FiChevronDown size={16} className="mt-0.5 group-hover:rotate-180 transition-transform duration-200" />
+                  {t('nav.categories')} <FiChevronDown size={16} className="mt-0.5 group-hover:rotate-180 transition-transform duration-200" />
                 </button>
                 <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-3 z-50">
                   {CATEGORIES.map((cat) => (
@@ -165,11 +186,11 @@ export default function BrandedNavbar() {
               </div>
               
               <Link to="/products?isNewArrival=true" className="text-[15px] font-medium text-gray-700 hover:text-brand-700 transition-colors relative group">
-                New Arrivals
+                {t('nav.new_arrivals')}
                 <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 bg-brand-700 transition-all group-hover:w-full"></span>
               </Link>
               <Link to="/products?isTrending=true" className="text-[15px] font-medium text-gray-700 hover:text-brand-700 transition-colors relative group">
-                Trending
+                {t('nav.trending')}
                 <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 bg-brand-700 transition-all group-hover:w-full"></span>
               </Link>
             </nav>
@@ -275,6 +296,43 @@ export default function BrandedNavbar() {
                     </motion.span>
                   )}
                 </Link>
+
+                {/* Language Switcher */}
+                <div className="relative" onMouseLeave={() => setLangMenuOpen(false)}>
+                  <button
+                    onMouseEnter={() => setLangMenuOpen(true)}
+                    onClick={() => setLangMenuOpen(!langMenuOpen)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors group"
+                  >
+                    <FiGlobe size={20} className="group-hover:text-brand-700 transition-colors" />
+                    <span className="text-[13px] font-bold uppercase hidden lg:inline-block">{currentLang.code}</span>
+                  </button>
+                  <AnimatePresence>
+                    {langMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden"
+                      >
+                        {languages.map((lng) => (
+                          <button
+                            key={lng.code}
+                            onClick={() => changeLanguage(lng.code)}
+                            className={`flex items-center gap-3 w-full px-4 py-2.5 text-[14px] transition-colors ${
+                              i18n.language === lng.code 
+                                ? 'bg-brand-50 text-brand-700 font-bold' 
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="text-lg">{lng.flag}</span>
+                            <span>{lng.name}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Profile */}
                 {authUser ? (

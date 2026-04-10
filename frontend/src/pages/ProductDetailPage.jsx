@@ -9,6 +9,8 @@ import {
 import { fetchProduct, fetchRecommendations, addToCart, toggleWishlist } from '../store/slices/allSlices';
 import ProductCard from '../components/product/ProductCard';
 import toast from 'react-hot-toast';
+import { trackProductView } from '../hooks/useAnalytics';
+import { ProductSEO } from '../hooks/useSEO';
 
 const FALLBACK_IMAGE = 'https://via.placeholder.com/800x1000?text=No+Image';
 
@@ -33,6 +35,25 @@ export default function ProductDetailPage() {
     setSelectedSize('');
     setSelectedColor('');
   }, [id, dispatch]);
+
+  // Analytics: track when product loads
+  useEffect(() => {
+    if (product) {
+      trackProductView(product);
+      // Recently Viewed Logic (existing)
+      const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+      const updated = [
+        { 
+          id: product._id, 
+          name: product.name, 
+          price: `₹${(product.discountedPrice || product.price).toLocaleString()}`, 
+          image: product.images?.[0]?.url || FALLBACK_IMAGE 
+        },
+        ...recentlyViewed.filter(p => p.id !== product._id)
+      ].slice(0, 6);
+      localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+    }
+  }, [product]);
 
   if (loading || !product) {
     return (
@@ -79,6 +100,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+      <ProductSEO product={product} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
         <button onClick={() => navigate(-1)} className="hover:text-brand-700 flex items-center gap-1">

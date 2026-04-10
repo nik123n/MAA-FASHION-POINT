@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { randomUUID } = require('crypto');
 const admin = require('../config/firebaseAdmin');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 
 const getDb = () => {
   if (!admin) {
@@ -41,6 +41,32 @@ const loadProduct = async (productId) => {
   return normalizeProduct(snapshot.id, snapshot.data());
 };
 
+const loadProductsByIds = async (productIds = []) => {
+  const uniqueIds = [...new Set((productIds || []).filter(Boolean))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const db = getDb();
+  const chunks = [];
+  for (let index = 0; index < uniqueIds.length; index += 10) {
+    chunks.push(uniqueIds.slice(index, index + 10));
+  }
+
+  const snapshots = await Promise.all(
+    chunks.map((chunk) =>
+      db.collection('products').where(FieldPath.documentId(), 'in', chunk).get()
+    )
+  );
+
+  const productMap = new Map();
+  for (const snapshot of snapshots) {
+    snapshot.docs.forEach((doc) => {
+      productMap.set(doc.id, normalizeProduct(doc.id, doc.data()));
+    });
+  }
+
+  return productMap;
+};
+
 const loadCartDoc = async (userId) => {
   const db = getDb();
   const ref = db.collection('carts').doc(userId);
@@ -73,20 +99,17 @@ const loadCartDoc = async (userId) => {
 };
 
 const hydrateCart = async (cart) => {
-  const items = await Promise.all(
-    (cart.items || []).map(async (item) => {
-      const product = await loadProduct(item.productId);
-      return {
-        _id: item._id,
-        productId: item.productId,
-        product,
-        quantity: Number(item.quantity || 0),
-        size: item.size || '',
-        color: item.color || '',
-        price: Number(item.price || 0),
-      };
-    })
-  );
+  const productMap = await loadProductsByIds((cart.items || []).map((item) => item.productId));
+
+  const items = (cart.items || []).map((item) => ({
+    _id: item._id,
+    productId: item.productId,
+    product: productMap.get(item.productId) || null,
+    quantity: Number(item.quantity || 0),
+    size: item.size || '',
+    color: item.color || '',
+    price: Number(item.price || 0),
+  }));
 
   return {
     _id: cart._id,

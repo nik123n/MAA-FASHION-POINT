@@ -2,15 +2,17 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { FiHome, FiGrid, FiShoppingCart, FiTag, FiUser } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 
 export default function MobileBottomNav() {
+  const { t } = useTranslation();
   const { totalQuantity } = useSelector((state) => state.cart);
 
   const navItems = [
-    { name: 'Home', path: '/', icon: <FiHome className="w-6 h-6" /> },
-    { name: 'Categories', path: '/products', icon: <FiGrid className="w-6 h-6" /> },
+    { name: t('nav.home'), path: '/', icon: <FiHome className="w-6 h-6" /> },
+    { name: t('nav.categories'), path: '/products', icon: <FiGrid className="w-6 h-6" /> },
     { 
-      name: 'Cart', 
+      name: t('footer.links.cart'), 
       path: '/cart', 
       icon: (
         <div className="relative">
@@ -23,8 +25,8 @@ export default function MobileBottomNav() {
         </div>
       ) 
     },
-    { name: 'Offers', path: '/products?discount=true', icon: <FiTag className="w-6 h-6" /> },
-    { name: 'Profile', path: '/profile', icon: <FiUser className="w-6 h-6" /> },
+    { name: t('nav.offers'), path: '/products?discount=true', icon: <FiTag className="w-6 h-6" /> },
+    { name: t('profile.title'), path: '/profile', icon: <FiUser className="w-6 h-6" /> },
   ];
 
   return (

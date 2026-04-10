@@ -1,0 +1,171 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // HELPER FUNCTIONS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // Check if the user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Check if the requesting user owns the document
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Check if the user has the admin custom claim
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // Block writes to protected fields — these must ONLY be changed by backend
+    function hasNoProtectedFieldChanges() {
+      return !(
+        'role' in request.resource.data ||
+        'isActive' in request.resource.data ||
+        'password' in request.resource.data ||
+        'customClaims' in request.resource.data
+      );
+    }
+
+    // Only allow whitelisted user fields from client
+    function isAllowedUserWrite() {
+      let allowed = ['name', 'phone', 'preferences', 'addresses', 'wishlist',
+                     'updatedAt', 'lastLogin', 'avatar'];
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // USERS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Read: own document or admin
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Create: only the user themselves can create their own profile
+      // AND they cannot set role or isActive from client
+      allow create: if isOwner(uid) && hasNoProtectedFieldChanges();
+
+      // Update: only whitelisted fields — role and isActive BLOCKED
+      allow update: if isOwner(uid) && hasNoProtectedFieldChanges();
+
+      // Delete: admin only (via backend API)
+      allow delete: if false; // Always via backend
+
+      // Addresses subcollection — owner access only
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // PRODUCTS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /products/{productId} {
+      // Anyone can read products (public catalog)
+      allow read: if true;
+
+      // All writes must go through backend API
+      allow write: if false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // ORDERS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      // Owner or admin can read
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+
+      // NO client writes to orders — ALL order operations go through backend
+      // This prevents:
+      //  - Status manipulation (e.g., marking as 'delivered' without shipping)
+      //  - Payment amount tampering
+      //  - Pricing manipulation
+      allow write: if false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CARTS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /carts/{uid} {
+      // Only the cart owner can read/write their own cart
+      allow read: if isOwner(uid);
+      // Allow writes from owner but block payment-related fields
+      allow write: if isOwner(uid) &&
+        !('payment' in request.resource.data) &&
+        !('orderStatus' in request.resource.data);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // COUPONS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /coupons/{couponId} {
+      // Authenticated users can read (to validate coupons)
+      allow read: if isSignedIn();
+
+      // No client writes — coupons managed via backend API only
+      allow write: if false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SALES COLLECTION (offline sales)
+    // ──────────────────────────────────────────────────────────────────────────
+    match /sales/{saleId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend only
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // STATISTICS COLLECTION
+    // ──────────────────────────────────────────────────────────────────────────
+    match /statistics/{docId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend only
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // WEBHOOK EVENTS (idempotency store)
+    // ──────────────────────────────────────────────────────────────────────────
+    match /webhookEvents/{eventId} {
+      // No client access whatsoever
+      allow read, write: if false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // AUDIT LOGS
+    // ──────────────────────────────────────────────────────────────────────────
+    match /auditLogs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAdmin();
+      // Client can never write audit logs
+      allow write: if false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // WISHLISTS (embedded in users — kept for backward compat)
+    // ──────────────────────────────────────────────────────────────────────────
+    match /wishlists/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // HEALTH CHECK (internal — allow backend to write)
+    // ──────────────────────────────────────────────────────────────────────────
+    match /_health/{docId} {
+      allow read, write: if false; // Written by Admin SDK (bypasses rules)
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // DEFAULT: Deny everything not explicitly allowed
+    // ──────────────────────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -88,4 +88,45 @@ const sendOrderConfirmationEmail = async (order) => {
   });
 };
 
-module.exports = { sendOrderConfirmationEmail };
+// ── Low Stock Admin Alert ─────────────────────────────────────────────────────
+const sendLowStockAlert = async (lowStockItems) => {
+  if (!lowStockItems || lowStockItems.length === 0) return;
+  if (!process.env.EMAIL_USER || !process.env.ADMIN_EMAIL) return;
+
+  const rows = lowStockItems.map(({ name, size, stock }) =>
+    `<tr>
+      <td style="padding:8px;border-bottom:1px solid #fee2e2;">${name}</td>
+      <td style="padding:8px;border-bottom:1px solid #fee2e2;text-align:center;">${size}</td>
+      <td style="padding:8px;border-bottom:1px solid #fee2e2;text-align:center;color:#dc2626;font-weight:bold;">${stock} left</td>
+    </tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#fff5f5;">
+    <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+      <div style="background:#dc2626;padding:24px 32px;">
+        <h2 style="color:#fff;margin:0;">⚠️ Low Stock Alert</h2>
+        <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;">The following products need restocking</p>
+      </div>
+      <div style="padding:24px 32px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #fee2e2;border-radius:8px;overflow:hidden;">
+          <thead><tr style="background:#fef2f2;">
+            <th style="padding:12px;text-align:left;color:#991b1b;font-size:13px;">PRODUCT</th>
+            <th style="padding:12px;text-align:center;color:#991b1b;font-size:13px;">SIZE</th>
+            <th style="padding:12px;text-align:center;color:#991b1b;font-size:13px;">STOCK</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="color:#6b7280;font-size:13px;margin-top:16px;">Please update inventory in the Admin Dashboard.</p>
+      </div>
+    </div>
+  </body></html>`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: process.env.ADMIN_EMAIL,
+    subject: `⚠️ Low Stock Alert — ${lowStockItems.length} item(s) need restocking`,
+    html,
+  });
+};
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockAlert };

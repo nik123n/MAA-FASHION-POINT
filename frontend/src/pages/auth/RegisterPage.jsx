@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiLock, FiPhone, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterPage() {
-  const { signUp } = useAuth();
+  const { signUp, signInGoogle } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
@@ -39,6 +40,19 @@ export default function RegisterPage() {
       navigate('/');
     } catch (err) {
       console.error('RegisterPage error:', err);
+      setError(getInlineError(err.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSubmit = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await signInGoogle();
+      navigate('/', { replace: true });
+    } catch (err) {
       setError(getInlineError(err.code));
     } finally {
       setLoading(false);
@@ -169,6 +183,18 @@ export default function RegisterPage() {
               ) : 'Create Account'}
             </button>
           </form>
+
+          <div className="mt-6 border-t border-gray-100 pt-6">
+            <button
+              type="button"
+              onClick={handleGoogleSubmit}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <FcGoogle size={20} />
+              Continue with Google
+            </button>
+          </div>
 
           <p className="text-center text-sm text-gray-500 mt-5">
             Already have an account?{' '}

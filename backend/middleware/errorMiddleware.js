@@ -1,47 +1,30 @@
-const notFound = (req, res, next) => {
-  const error = new Error(`Route not found: ${req.originalUrl}`);
-  res.status(404);
-  next(error);
-};
+/**
+ * errorMiddleware.js
+ * Global error handler — structured, hides internals in production.
+ */
+
+const { logger } = require('../utils/logger');
 
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  let message = err.message;
+  const statusCode = err.statusCode || res.statusCode || 500;
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  // Mongoose bad ObjectId
-  if (err.name === 'CastError' && err.kind === 'ObjectId') {
-    statusCode = 404;
-    message = 'Resource not found';
-  }
-
-  // Mongoose duplicate key
-  if (err.code === 11000) {
-    statusCode = 400;
-    const field = Object.keys(err.keyValue)[0];
-    message = `${field} already exists`;
-  }
-
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    statusCode = 400;
-    message = Object.values(err.errors).map((e) => e.message).join(', ');
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    statusCode = 401;
-    message = 'Invalid token';
-  }
-  if (err.name === 'TokenExpiredError') {
-    statusCode = 401;
-    message = 'Token expired, please login again';
-  }
+  // Log the error (structured, with redaction of sensitive data)
+  logger.error('Request error', {
+    error: err,
+    message: err.message,
+    statusCode,
+    method: req.method,
+    url: req.originalUrl,
+    uid: req.user?._id,
+  });
 
   res.status(statusCode).json({
     success: false,
-    message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    message: err.message || 'Internal Server Error',
+    // Only expose stack trace in development
+    ...(isProduction ? {} : { stack: err.stack }),
   });
 };
 
-module.exports = { notFound, errorHandler };
+module.exports = { errorHandler };
