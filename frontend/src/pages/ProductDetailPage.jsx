@@ -11,6 +11,7 @@ import ProductCard from '../components/product/ProductCard';
 import toast from 'react-hot-toast';
 import { trackProductView } from '../hooks/useAnalytics';
 import { ProductSEO } from '../hooks/useSEO';
+import trackActivity from '../utils/trackActivity';
 
 const FALLBACK_IMAGE = 'https://via.placeholder.com/800x1000?text=No+Image';
 
@@ -40,6 +41,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (product) {
       trackProductView(product);
+      trackActivity(product._id, 'view', product.category);
       // Recently Viewed Logic (existing)
       const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
       const updated = [
@@ -85,6 +87,7 @@ export default function ProductDetailPage() {
     if (product.colors?.length > 0 && !selectedColor) { toast.error('Please select a color'); return; }
     try {
       await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize, color: selectedColor })).unwrap();
+      trackActivity(product._id, 'cart', product.category);
     } catch (_) {}
   };
 
@@ -94,6 +97,7 @@ export default function ProductDetailPage() {
     if (product.colors?.length > 0 && !selectedColor) { toast.error('Please select a color'); return; }
     try {
       await dispatch(addToCart({ productId: product._id, quantity: qty, size: selectedSize, color: selectedColor })).unwrap();
+      trackActivity(product._id, 'cart', product.category);
       navigate('/cart');
     } catch (_) {}
   };

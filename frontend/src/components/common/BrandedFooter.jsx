@@ -19,10 +19,10 @@ export default function BrandedFooter() {
               {t('footer.about')}
             </p>
             <div className="flex gap-4">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-pink-600 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
+              <a href="https://www.instagram.com/maa_fashion_point_?igsh=MTZraXV3Nmh3ajkwcA==" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-pink-600 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
                 <FiInstagram size={18} className="group-hover:text-white text-brand-100" />
               </a>
-              <a href="https://wa.me/917567473009" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-green-500 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
+              <a href="https://chat.whatsapp.com/FenpmsiTHRt41htXUN7Muj" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-green-500 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
                 <FaWhatsapp size={18} className="group-hover:text-white text-brand-100" />
               </a>
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white/10 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-lg group">
@@ -62,7 +62,7 @@ export default function BrandedFooter() {
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-leaf-500 transition-colors">
                   <FiMapPin size={15} className="text-leaf-400 group-hover:text-white transition-colors" />
                 </div>
-                <span className="mt-1 leading-snug">Near Bageshwar Mandir, Amarpara,<br/>Bagasara, Gujarat 365440</span>
+                <span className="mt-1 leading-snug">Near Bageshwar Mandir, Amarpara,<br />Bagasara, Gujarat 365440</span>
               </li>
               <li className="flex items-center gap-4 text-sm text-brand-100/80 group">
                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-leaf-500 transition-colors">
@@ -85,7 +85,7 @@ export default function BrandedFooter() {
           <p className="text-xs text-brand-100/60 font-medium tracking-wide">© 2026 MAA Fashion Point. {t('footer.rights')}</p>
           <div className="flex items-center gap-4">
             <span className="text-xs text-brand-100/60 font-medium">Secured by</span>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Razorpay_logo.png" alt="Razorpay" className="h-4 opacity-70 grayscale hover:grayscale-0 transition-all" />
+            <img src="/Razorpay_logo.svg" alt="Razorpay" className="h-4 opacity-70 grayscale hover:grayscale-0 transition-all" />
           </div>
         </div>
       </div>

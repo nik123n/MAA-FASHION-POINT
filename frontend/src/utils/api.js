@@ -38,7 +38,10 @@ api.interceptors.request.use(async (config) => {
 
 // ─── Response Interceptor — handle errors globally ────────────────────────────
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log(`[API RESPONSE] ${res.config.method.toUpperCase()} ${res.config.url} :`, res.status, res.data);
+    return res;
+  },
   async (err) => {
     const originalRequest = err.config;
 
@@ -57,6 +60,7 @@ api.interceptors.response.use(
       }
     }
 
+    console.error(`[API ERROR] ${originalRequest.method.toUpperCase()} ${originalRequest.url} :`, err.message);
     return Promise.reject(err);
   }
 );

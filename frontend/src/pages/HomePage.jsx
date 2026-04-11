@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield } from 'react-icons/fi';
-import { fetchHomeProducts } from '../store/slices/allSlices';
+import { FiArrowRight, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield, FiLoader } from 'react-icons/fi';
+import { fetchHomeProducts, fetchPersonalizedRecommendations } from '../store/slices/allSlices';
 import ProductCard, { ProductCardSkeleton } from '../components/product/ProductCard';
+import { useInView } from 'react-intersection-observer';
 
 const CATEGORY_DATA = [
   { name: '3 Piece', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=500&fit=crop', color: 'from-rose-900/60' },
@@ -49,14 +50,22 @@ const FEATURES = [
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { homeData, loading } = useSelector((s) => s.products);
+  const { homeData, loading, personalizedRecommendations, personalizedPage, hasMorePersonalized } = useSelector((s) => s.products);
   const [heroIdx, setHeroIdx] = React.useState(0);
+  const { ref: loadMoreRef, inView } = useInView();
 
   useEffect(() => {
     dispatch(fetchHomeProducts());
+    dispatch(fetchPersonalizedRecommendations({ page: 1, limit: 12 }));
     const timer = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
     return () => clearInterval(timer);
   }, [dispatch]);
+
+  useEffect(() => {
+    if (inView && hasMorePersonalized && !loading) {
+      dispatch(fetchPersonalizedRecommendations({ page: personalizedPage + 1, limit: 12 }));
+    }
+  }, [inView, hasMorePersonalized, loading, personalizedPage, dispatch]);
 
   const hero = HERO_SLIDES[heroIdx];
 
@@ -215,6 +224,38 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ── RECOMMENDED FOR YOU (INFINITE SCROLL) ─────────────────────────── */}
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="font-accent text-brand-600 italic text-lg mb-1">Tailored To Your Taste</p>
+            <h2 className="font-display text-4xl text-gray-900">Recommended For You</h2>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {personalizedRecommendations?.map((p, i) => (
+              <ProductCard key={`${p._id}-${i}`} product={p} index={i % 12} />
+            ))}
+            
+            {/* Skeletons while loading first page or next page */}
+            {loading && Array(4).fill(0).map((_, i) => <ProductCardSkeleton key={`skeleton-${i}`} />)}
+          </div>
+          
+          {/* Infinite Scroll Trigger */}
+          {hasMorePersonalized && !loading && (
+            <div ref={loadMoreRef} className="py-10 flex justify-center">
+              <FiLoader className="animate-spin text-brand-500 text-3xl" />
+            </div>
+          )}
+          
+          {!hasMorePersonalized && personalizedRecommendations?.length > 0 && (
+             <div className="text-center py-10 text-gray-500 font-medium">
+               You've seen all recommendations!
+             </div>
+          )}
+        </div>
+      </section>
 
       {/* ── BANNER CTA ───────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-brand-700 text-white py-20">

@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/',  // Set root base for Vercel
+  base: '/',  // Set root base for Netlify
   plugins: [react()],
   server: {
     port: 5173,

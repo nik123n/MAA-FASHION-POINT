@@ -89,7 +89,7 @@ export function Footer() {
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-500">© 2026 MAA FASHION POINT. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Razorpay_logo.png" alt="Razorpay" className="h-5 opacity-50 filter grayscale" />
+            <img src="/Razorpay_logo.svg" alt="Razorpay" className="h-5 opacity-50 filter grayscale" />
             <span className="text-xs text-gray-500">Secure Payments</span>
           </div>
         </div>

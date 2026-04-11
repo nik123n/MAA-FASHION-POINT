@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleWishlist } from '../../store/slices/allSlices';
 import { addToCart } from '../../store/slices/allSlices';
 import toast from 'react-hot-toast';
+import trackActivity from '../../utils/trackActivity';
 
 const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" viewBox="0 0 400 533"><rect width="400" height="533" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%239ca3af">No Image</text></svg>';
 
@@ -31,6 +32,7 @@ export default function ProductCard({ product, index = 0 }) {
     e.preventDefault();
     if (!token) { toast.error('Please login to add to wishlist'); return; }
     dispatch(toggleWishlist(product._id));
+    trackActivity(product._id, isWishlisted ? 'unwishlist' : 'wishlist', product.category);
   };
 
   const handleQuickAdd = (e) => {
@@ -39,6 +41,11 @@ export default function ProductCard({ product, index = 0 }) {
     const firstAvailable = product.sizes?.find((s) => s.stock > 0);
     if (!firstAvailable) { toast.error('Out of stock'); return; }
     dispatch(addToCart({ productId: product._id, quantity: 1, size: firstAvailable.size }));
+    trackActivity(product._id, 'cart', product.category);
+  };
+
+  const handleProductClick = () => {
+    trackActivity(product._id, 'click', product.category);
   };
 
   return (
@@ -47,7 +54,7 @@ export default function ProductCard({ product, index = 0 }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
     >
-      <Link to={`/products/${product._id}`} className="group block h-full">
+      <Link to={`/products/${product._id}`} onClick={handleProductClick} className="group block h-full">
         <div className="relative overflow-hidden rounded-t-xl bg-gray-100">
           {/* Image */}
           <div className="aspect-[3/4] overflow-hidden">

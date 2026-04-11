@@ -68,11 +68,16 @@ export const fetchRecommendations = createAsyncThunk('products/recommendations',
   catch (e) { return rejectWithValue(e.response?.data?.message); }
 });
 
+export const fetchPersonalizedRecommendations = createAsyncThunk('products/personalizedRecommendations', async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
+  try { return (await api.get(`/recommendations`, { params: { page, limit } })).data; }
+  catch (e) { return rejectWithValue(e.response?.data?.message); }
+});
+
 const productSlice = createSlice({
   name: 'products',
   initialState: {
     products: [], product: null, pagination: null, homeData: null,
-    recommendations: [], loading: false, error: null,
+    recommendations: [], personalizedRecommendations: [], personalizedPage: 1, hasMorePersonalized: true, loading: false, error: null,
   },
   reducers: { clearProduct: (s) => { s.product = null; } },
   extraReducers: (b) => {
@@ -86,6 +91,19 @@ const productSlice = createSlice({
     b.addCase(fetchProduct.rejected, (s, a) => { s.loading = false; s.error = a.payload; });
     b.addCase(fetchHomeProducts.fulfilled, (s, a) => { s.homeData = a.payload; });
     b.addCase(fetchRecommendations.fulfilled, (s, a) => { s.recommendations = a.payload.recommendations; });
+    b.addCase(fetchPersonalizedRecommendations.pending, (s) => { s.loading = true; });
+    b.addCase(fetchPersonalizedRecommendations.fulfilled, (s, a) => {
+      s.loading = false;
+      const newItems = a.payload.data || [];
+      if (a.meta.arg.page === 1) {
+        s.personalizedRecommendations = newItems;
+      } else {
+        s.personalizedRecommendations = [...s.personalizedRecommendations, ...newItems];
+      }
+      s.personalizedPage = a.meta.arg.page;
+      s.hasMorePersonalized = newItems.length >= (a.meta.arg.limit || 10);
+    });
+    b.addCase(fetchPersonalizedRecommendations.rejected, (s, a) => { s.loading = false; s.error = a.payload; });
   },
 });
 

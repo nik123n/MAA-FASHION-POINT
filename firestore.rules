@@ -162,6 +162,14 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // ACTIVITY LOGS
+    // ──────────────────────────────────────────────────────────────────────────
+    match /activity/{activityId} {
+      allow write: if true; // anyone can log activity
+      allow read: if isAdmin(); // only admin can read
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // DEFAULT: Deny everything not explicitly allowed
     // ──────────────────────────────────────────────────────────────────────────
     match /{document=**} {

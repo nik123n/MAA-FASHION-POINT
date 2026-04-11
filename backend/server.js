@@ -62,6 +62,29 @@ if (sentryEnabled) {
 // MIDDLEWARE STACK
 // ============================================================
 
+// 1. CORS FIRST!
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://maafashionpoint.netlify.app",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
+
+// Handle preflight requests
+app.options("*", cors());
+
 // Security headers (strict in production)
 app.use(
   helmet({
@@ -69,10 +92,12 @@ app.use(
       ? {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", 'https://checkout.razorpay.com'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
             frameSrc: ["'self'", 'https://api.razorpay.com'],
-            imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://firebasestorage.googleapis.com'],
-            connectSrc: ["'self'", 'https://api.razorpay.com', 'https://*.googleapis.com'],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com', 'https://firebasestorage.googleapis.com', 'https://images.unsplash.com', 'https://m.media-amazon.com', '*'],
+            connectSrc: ["'self'", 'https://api.razorpay.com', 'https://*.googleapis.com', 'https://maafashionpoint.netlify.app'],
           },
         }
       : false, // Disable CSP in development for easy debugging
@@ -104,17 +129,6 @@ app.use((req, res, next) => {
   console.log(`Incoming Request: ${req.method} ${req.originalUrl}`);
   next();
 });
-
-// CORS
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://maafashionpoint.netlify.app"
-  ],
-  credentials: true
-}));
-
-app.options("*", cors());
 
 // ============================================================
 // RATE LIMITING — applied per route group
