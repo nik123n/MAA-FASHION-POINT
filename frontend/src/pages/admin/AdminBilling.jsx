@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus, FiTrash2, FiPrinter, FiX, FiSearch,
   FiUser, FiPhone, FiCalendar, FiShoppingBag,
-  FiCheckCircle, FiFileText,
+  FiCheckCircle, FiFileText, FiDownload, FiSend, FiMessageCircle,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -91,8 +91,54 @@ function PrintableInvoice({ bill, billNumber }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Invoice Modal — shown after successful bill creation
 // ─────────────────────────────────────────────────────────────────────────────
-function InvoiceModal({ bill, billNumber, onClose, onNewBill }) {
+function InvoiceModal({ bill, billNumber, invoiceId, whatsappStatus, onClose, onNewBill }) {
   const handlePrint = () => window.print();
+  const [downloading, setDownloading] = React.useState(false);
+  const [resending,   setResending]   = React.useState(false);
+  const [waStatus,    setWaStatus]    = React.useState(whatsappStatus);
+
+  // Download PDF from backend
+  const handleDownloadPDF = async () => {
+    if (!invoiceId) return toast.error('Invoice ID missing');
+    setDownloading(true);
+    try {
+      const { data } = await api.get(`/invoices/${invoiceId}/pdf`, { responseType: 'blob' });
+      const url  = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href  = url;
+      link.setAttribute('download', `${billNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded!');
+    } catch {
+      toast.error('PDF download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Resend WhatsApp
+  const handleResendWhatsApp = async () => {
+    if (!invoiceId) return toast.error('Invoice ID missing');
+    if (!bill.phone) return toast.error('No phone number on this invoice');
+    setResending(true);
+    try {
+      const { data } = await api.post(`/invoices/${invoiceId}/resend-whatsapp`);
+      if (data.whatsapp?.success) {
+        toast.success('WhatsApp invoice sent!');
+        setWaStatus('sent');
+      } else {
+        toast.error(data.whatsapp?.error || 'WhatsApp send failed');
+        setWaStatus('failed');
+      }
+    } catch {
+      toast.error('WhatsApp send failed');
+    } finally {
+      setResending(false);
+    }
+  };
 
   return (
     <motion.div
@@ -186,25 +232,50 @@ function InvoiceModal({ bill, billNumber, onClose, onNewBill }) {
           <p className="text-center text-xs text-gray-400 mt-4 italic">Thank you for shopping with us! 🙏</p>
         </div>
 
+        {/* WhatsApp Status */}
+        <div className="px-6 pb-2">
+          {waStatus === 'sent' && (
+            <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <FiMessageCircle size={14} /> WhatsApp invoice delivered to customer ✓
+            </div>
+          )}
+          {waStatus === 'failed' && (
+            <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <FiMessageCircle size={14} /> WhatsApp delivery failed — use Resend button below
+            </div>
+          )}
+          {!waStatus && bill.phone && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <FiMessageCircle size={14} /> WhatsApp not sent (no credentials configured)
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
-        <div className="flex gap-3 p-4">
-          <button
-            onClick={handlePrint}
-            className="flex-1 flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 text-white py-3 rounded-xl font-semibold text-sm transition-all hover:shadow-lg"
-          >
-            <FiPrinter size={18} /> Print Bill
+        <div className="grid grid-cols-2 gap-2 p-4 pt-2">
+          <button onClick={handlePrint}
+            className="flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 text-white py-2.5 rounded-xl font-semibold text-sm transition-all">
+            <FiPrinter size={16} /> Print
           </button>
-          <button
-            onClick={onNewBill}
-            className="flex-1 flex items-center justify-center gap-2 border-2 border-leaf-600 text-leaf-700 hover:bg-leaf-50 py-3 rounded-xl font-semibold text-sm transition-all"
-          >
-            <FiPlus size={16} /> New Bill
+          <button onClick={handleDownloadPDF} disabled={downloading}
+            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60">
+            {downloading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FiDownload size={16} />}
+            {downloading ? 'Downloading…' : 'PDF'}
           </button>
-          <button
-            onClick={onClose}
-            className="p-3 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors text-gray-500"
-          >
-            <FiX size={18} />
+          {bill.phone && (
+            <button onClick={handleResendWhatsApp} disabled={resending}
+              className="col-span-2 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60">
+              {resending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FiSend size={15} />}
+              {resending ? 'Sending…' : (waStatus === 'sent' ? 'Resend WhatsApp Invoice' : 'Send WhatsApp Invoice')}
+            </button>
+          )}
+          <button onClick={onNewBill}
+            className="flex items-center justify-center gap-2 border-2 border-leaf-600 text-leaf-700 hover:bg-leaf-50 py-2.5 rounded-xl font-semibold text-sm transition-all">
+            <FiPlus size={15} /> New Bill
+          </button>
+          <button onClick={onClose}
+            className="flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 py-2.5 rounded-xl text-gray-500 text-sm transition-all">
+            <FiX size={15} /> Close
           </button>
         </div>
       </motion.div>
@@ -236,6 +307,8 @@ export default function AdminBilling() {
   const [saving, setSaving] = useState(false);
   const [createdBill, setCreatedBill] = useState(null);
   const [billNumber, setBillNumber] = useState('');
+  const [invoiceId, setInvoiceId] = useState('');
+  const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [recentBills, setRecentBills] = useState([]);
 
   // Fetch product list once
@@ -248,10 +321,16 @@ export default function AdminBilling() {
 
   const fetchRecentBills = async () => {
     try {
-      const { data } = await api.get('/admin/orders', { params: { limit: 10 } });
-      const bills = (data.orders || []).filter((o) => o.source === 'offline' || o.type === 'offline');
-      setRecentBills(bills.slice(0, 8));
-    } catch (_) {}
+      const { data } = await api.get('/invoices', { params: { limit: 8 } });
+      setRecentBills(data.invoices || []);
+    } catch (_) {
+      // fallback
+      try {
+        const { data } = await api.get('/admin/orders', { params: { limit: 10 } });
+        const bills = (data.orders || []).filter(o => o.source === 'offline');
+        setRecentBills(bills.slice(0, 8));
+      } catch (__) {}
+    }
   };
 
   // ── Calculated totals ─────────────────────────────────────────────────────
@@ -346,10 +425,15 @@ export default function AdminBilling() {
 
     setSaving(true);
     try {
-      const { data } = await api.post('/admin/offline-sale', payload);
+      // Use new /invoices endpoint — generates PDF + sends WhatsApp automatically
+      const { data } = await api.post('/invoices', payload);
       toast.success('Bill saved successfully!');
-      setBillNumber(data.billNumber || `BILL-${Date.now().toString(36).toUpperCase()}`);
+      setBillNumber(data.billNumber || `MFP-${Date.now().toString(36).toUpperCase()}`);
+      setInvoiceId(data.invoice?.id || '');
+      setWhatsappStatus(data.whatsapp?.success ? 'sent' : (data.whatsapp?.error ? 'failed' : null));
       setCreatedBill({ ...payload, date: form.date });
+
+      if (data.whatsapp?.success) toast.success('WhatsApp invoice sent to customer!');
 
       // Reset form
       setForm({ customerName: '', phone: '', date: today, discount: '' });
@@ -696,6 +780,8 @@ export default function AdminBilling() {
           <InvoiceModal
             bill={createdBill}
             billNumber={billNumber}
+            invoiceId={invoiceId}
+            whatsappStatus={whatsappStatus}
             onClose={() => setCreatedBill(null)}
             onNewBill={handleNewBill}
           />

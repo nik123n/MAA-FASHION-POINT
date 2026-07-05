@@ -2,43 +2,39 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield } from 'react-icons/fi';
+import { FiArrowRight, FiStar, FiTruck, FiRefreshCw, FiShield } from 'react-icons/fi';
 import { fetchHomeProducts } from '../store/slices/allSlices';
 import ProductCard, { ProductCardSkeleton } from '../components/product/ProductCard';
-import BrandLogo from '../components/common/BrandLogoNew';
 import CategoryScroll from '../components/home/CategoryScroll';
+import HeroSection from '../components/home/HeroSection';
 
+// ─── CATEGORY DATA ─────────────────────────────────────────────────────────
+// Images marked pending:false have been replaced with uploaded product photos.
+// Images marked pending:true are awaiting the next batch of uploaded images.
 const CATEGORY_DATA = [
-  { name: '3 Piece', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=500&fit=crop', color: 'from-brand-900/65' },
-  { name: '3 Piece Pair', image: 'https://images.unsplash.com/photo-1583391733981-8498408ee4b6?w=400&h=500&fit=crop', color: 'from-coral-900/60' },
-  { name: 'Short Top', image: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=400&h=500&fit=crop', color: 'from-leaf-900/65' },
-  { name: '2 Piece', image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=500&fit=crop', color: 'from-brand-800/60' },
-  { name: 'Tunic Top', image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=500&fit=crop', color: 'from-coral-800/65' },
-  { name: 'Cotton Tunic Top', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400&h=500&fit=crop', color: 'from-leaf-800/65' },
-  { name: 'Long Top', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=400&h=500&fit=crop', color: 'from-brand-900/60' },
-  { name: 'Cord Set', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop', color: 'from-coral-900/65' },
-  { name: 'Plazo Pair', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=500&fit=crop', color: 'from-leaf-900/60' },
-  { name: 'Kurti Plaza Dupata', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=500&fit=crop', color: 'from-brand-800/65' },
-  { name: 'Kurti Pent Dupata', image: 'https://images.unsplash.com/photo-1583391733981-8498408ee4b6?w=400&h=500&fit=crop', color: 'from-coral-800/60' },
-  { name: 'Cotton Straight Pent', image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=500&fit=crop', color: 'from-leaf-800/60' },
+  // ── BATCH 1 (uploaded) ──────────────────────────────────────────────────
+  { name: '3 Piece',             image: '/categories/3-piece.png',      overlay: 'rgba(80,40,10,0.52)',   pending: false },
+  { name: '3 Piece Pair',        image: '/categories/3-piece-pair.png', overlay: 'rgba(20,60,70,0.52)',   pending: false },
+  { name: 'Short Top',           image: '/categories/short-top.png',    overlay: 'rgba(15,25,80,0.52)',   pending: false },
+  // ── BATCH 2 (uploaded) ──────────────────────────────────────────────────
+  { name: '2 Piece',             image: '/categories/2-piece.png',      overlay: 'rgba(10,30,60,0.55)',   pending: false },
+  { name: 'Tunic Top',           image: '/categories/tunic-top.png',    overlay: 'rgba(10,25,70,0.55)',   pending: false },
+  { name: 'Cotton Tunic Top',    image: '/categories/cotton-tunic.png', overlay: 'rgba(15,15,30,0.55)',   pending: false },
+  { name: 'Long Top',            image: '/categories/long-top.png',     overlay: 'rgba(20,50,100,0.55)',  pending: false },
+  { name: 'Cord Set',            image: '/categories/cord-set.png',     overlay: 'rgba(100,40,15,0.55)',  pending: false },
+  // ── BATCH 3 (uploaded) ──────────────────────────────────────────────────
+  { name: 'Plazo Pair',          image: '/categories/plazo-pair.png',   overlay: 'rgba(120,15,15,0.55)', pending: false },
+  { name: 'Kurti Plaza Dupata',  image: '/categories/kurti-plazo.png',  overlay: 'rgba(50,25,10,0.55)',  pending: false },
+  { name: 'Kurti Pent Dupata',   image: '/categories/kurti-pent.png',   overlay: 'rgba(55,20,65,0.55)',  pending: false },
+  { name: 'Cotton Straight Pent',image: '/categories/cotton-pent.png',  overlay: 'rgba(30,55,80,0.55)',  pending: false },
 ];
 
-const HERO_SLIDES = [
-  {
-    title: 'Fashion That Cares',
-    subtitle: 'Boutique looks for every woman',
-    cta: 'Shop Collection',
-    link: '/products',
-    bg: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1400&h=700&fit=crop',
-  },
-  {
-    title: 'Grace In Every Thread',
-    subtitle: 'Fresh ethnic and festive edits',
-    cta: 'See New Arrivals',
-    link: '/products?isNewArrival=true',
-    bg: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1400&h=700&fit=crop',
-  },
-];
+const HERO_DATA = {
+  title: 'Grace In\nEvery Thread',
+  subtitle: 'Fresh ethnic and festive edits — crafted for the modern Indian woman.',
+  ctaLabel: 'See New Arrivals',
+  ctaLink: '/products?isNewArrival=true',
+};
 
 const FEATURES = [
   { icon: FiTruck, title: 'Free Shipping', desc: 'On orders above Rs 999' },
@@ -63,12 +59,9 @@ const CIRCLE_POSITIONS = [
 export default function BrandedHomePage() {
   const dispatch = useDispatch();
   const { homeData, loading } = useSelector((s) => s.products);
-  const [heroIdx, setHeroIdx] = React.useState(0);
 
   useEffect(() => {
     dispatch(fetchHomeProducts());
-    const timer = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
-    return () => clearInterval(timer);
   }, [dispatch]);
 
   return (
@@ -78,98 +71,7 @@ export default function BrandedHomePage() {
         <CategoryScroll />
       </div>
 
-      <section className="relative overflow-hidden min-h-[50vh] lg:min-h-[78vh]">
-        {HERO_SLIDES.map((slide, i) => (
-          <motion.div
-            key={i}
-            initial={false}
-            animate={{ opacity: i === heroIdx ? 1 : 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute inset-0"
-          >
-            <img src={slide.bg} alt="" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(25,32,74,0.92)_0%,rgba(25,32,74,0.72)_38%,rgba(52,48,143,0.4)_72%,rgba(103,187,46,0.2)_100%)]" />
-          </motion.div>
-        ))}
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-16 lg:py-24">
-          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center min-h-[50vh] lg:min-h-[78vh]">
-            <motion.div
-              key={heroIdx}
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="max-w-2xl"
-            >
-              <div className="inline-flex items-center gap-3 bg-white/12 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 text-white/90 mb-6">
-                <span className="w-2.5 h-2.5 rounded-full bg-leaf-400" />
-                Caring for every women
-              </div>
-              <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-5">
-                {HERO_SLIDES[heroIdx].title}
-              </h1>
-              <p className="font-accent text-2xl italic text-brand-100 mb-8">
-                {HERO_SLIDES[heroIdx].subtitle}
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link to={HERO_SLIDES[heroIdx].link} className="inline-flex items-center gap-3 bg-white text-brand-700 px-8 py-4 rounded-full font-semibold text-lg hover:bg-brand-50 transition-all hover:gap-5 hover:shadow-xl">
-                  <FiShoppingBag size={20} />
-                  {HERO_SLIDES[heroIdx].cta}
-                  <FiArrowRight size={18} />
-                </Link>
-                <Link to="/products?isTrending=true" className="inline-flex items-center justify-center gap-3 border border-white/30 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/10 transition-all text-center">
-                  Explore Trends
-                </Link>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.6 }}
-              className="relative"
-            >
-              <div className="rounded-[2rem] bg-white/12 backdrop-blur-xl border border-white/15 p-6 sm:p-8 shadow-[0_30px_80px_rgba(10,16,45,0.32)]">
-                <BrandLogo className="mb-6" />
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="rounded-[1.5rem] bg-white p-5">
-                    <p className="text-xs uppercase tracking-[0.24em] text-brand-500 mb-2">Signature</p>
-                    <p className="font-display text-2xl text-brand-800">MAA FASHION POINT </p>
-                    <p className="text-sm text-gray-500 mt-2">Freshly styled outfits with a strong local identity.</p>
-                  </div>
-                  <div className="rounded-[1.5rem] bg-leaf-50 p-5 border border-leaf-100">
-                    <p className="text-xs uppercase tracking-[0.24em] text-leaf-700 mb-2">This Week</p>
-                    <p className="font-display text-2xl text-leaf-900">Festive Edit</p>
-                    <p className="text-sm text-leaf-900/70 mt-2">Sarees, kurtis, and daily wear made brighter.</p>
-                  </div>
-                </div>
-                <div className="mt-5 rounded-[1.5rem] bg-gradient-to-r from-coral-600 to-coral-500 text-white p-5">
-                  <p className="text-sm uppercase tracking-[0.24em] text-white/80 mb-2">Welcome offer</p>
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-display text-3xl">20% Off</p>
-                      <p className="text-sm text-white/85">Use code WELCOME20 on your first order.</p>
-                    </div>
-                    <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
-                      <FiArrowRight size={20} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {HERO_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setHeroIdx(i)}
-              className={`rounded-full transition-all duration-300 ${i === heroIdx ? 'w-8 h-2.5 bg-white' : 'w-2.5 h-2.5 bg-white/40'}`}
-            />
-          ))}
-        </div>
-      </section>
+      <HeroSection heroData={HERO_DATA} />
 
       <section className="bg-white/85 backdrop-blur-sm border-y border-brand-100">
         <div className="max-w-7xl mx-auto px-4 py-5">
@@ -189,26 +91,68 @@ export default function BrandedHomePage() {
         </div>
       </section>
 
+      {/* ── CATEGORY GRID ───────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
           <p className="font-accent text-brand-600 italic text-lg mb-1">Shop by Style</p>
           <h2 className="font-display text-4xl text-gray-900">Our Collections</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-5">
           {CATEGORY_DATA.map((cat, i) => (
             <motion.div
               key={cat.name}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
+              transition={{ delay: i * 0.06, duration: 0.45, ease: 'easeOut' }}
+              className="flex flex-col"
             >
-              <Link to={`/products?category=${cat.name}`} className="group block relative overflow-hidden rounded-[1.75rem] aspect-[3/4] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <div className={`absolute inset-0 bg-gradient-to-t ${cat.color} to-transparent`} />
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white text-center">
-                  <p className="font-display text-base font-semibold">{cat.name}</p>
+              <Link
+                to={`/products?category=${encodeURIComponent(cat.name)}`}
+                className="group block relative overflow-hidden rounded-[2rem] shadow-[0_16px_40px_rgba(15,23,42,0.10)] hover:shadow-[0_24px_56px_rgba(15,23,42,0.18)] transition-shadow duration-400"
+                style={{ aspectRatio: '3/4' }}
+                aria-label={`Shop ${cat.name}`}
+              >
+                {/* ── IMAGE ── */}
+                {cat.pending ? (
+                  /* Elegant gradient placeholder while awaiting uploaded image */
+                  <div
+                    className="w-full h-full flex items-end"
+                    style={{ background: `linear-gradient(160deg, ${cat.overlay.replace('0.52', '1')}, rgba(10,10,30,0.9))` }}
+                  />
+                ) : (
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-105"
+                  />
+                )}
+
+                {/* ── GRADIENT OVERLAY ── */}
+                <div
+                  className="absolute inset-0 transition-opacity duration-300 group-hover:opacity-90"
+                  style={{
+                    background: `linear-gradient(to top, ${cat.overlay} 0%, rgba(0,0,0,0.18) 55%, transparent 100%)`,
+                  }}
+                />
+
+                {/* ── LABEL ── */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+                  <p className="font-display text-white text-sm sm:text-base font-semibold text-center leading-tight drop-shadow-sm">
+                    {cat.name}
+                  </p>
+                  {cat.pending && (
+                    <p className="text-white/50 text-[10px] text-center mt-0.5 tracking-wide">Coming soon</p>
+                  )}
                 </div>
+
+                {/* ── HOVER SHINE ── */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                  style={{ background: 'linear-gradient(120deg, transparent 45%, rgba(255,255,255,0.07) 55%, transparent 65%)' }}
+                />
               </Link>
             </motion.div>
           ))}
@@ -268,7 +212,6 @@ export default function BrandedHomePage() {
           </div>
         </section>
       )}
-
 
       <section className="relative overflow-hidden py-20">
         <div className="absolute inset-0 bg-[linear-gradient(120deg,#34308f_0%,#253170_45%,#67bb2e_100%)]" />
